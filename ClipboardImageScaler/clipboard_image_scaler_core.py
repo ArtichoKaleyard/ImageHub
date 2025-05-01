@@ -2,7 +2,6 @@
 粘贴板图像自动缩放器 - 核心模块
 该模块负责检测粘贴板中的图像，并根据设定的参数自动缩放
 """
-
 import threading
 import numpy as np
 import cv2
@@ -12,33 +11,55 @@ import win32con
 from io import BytesIO
 
 
-class ClipboardImageScalerCore:
+class ImageToolBase:
+    """图像工具基类"""
+    def __init__(self):
+        self.running = False
+        self.thread = None  # 存储线程对象
+
+    def start(self):
+        """线程安全的启动方法"""
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=self.run)
+            self.thread.daemon = True
+            self.thread.start()
+            return True
+        return False
+
+    def stop(self):
+        """线程安全的停止方法"""
+        if self.running:
+            self.running = False
+            # 可选：等待线程自然退出（若需要及时停止可添加超时）
+            return True
+        return False
+
+    def run(self):
+        """需要子类实现的核心逻辑"""
+        raise NotImplementedError
+
+
+class ClipboardImageScalerCore(ImageToolBase):
     def __init__(self, callback=None):
         """
         初始化粘贴板图像缩放器核心
-
         参数:
         callback -- 用于通知UI更新的回调函数
         """
+        super().__init__()
         # 目标尺寸（默认1920x1080）
         self.target_width = 1920
         self.target_height = 1080
-
         # 配置参数
         self.tolerance = 0.6  # 纵横比容差
         self.resize_method = cv2.INTER_LANCZOS4  # 默认缩放算法
         self.auto_adjust_larger_size = True  # 是否自动调整大于目标尺寸的图像
         self.auto_copy_back = True  # 自动复制回粘贴板
-
         # 状态变量
-        self.monitoring = False
         self.last_image = None
         self.scaled_image = None
         self.last_clipboard_seq = 0  # 用于检测粘贴板变化的序号
-
-        # 监控线程
-        self.monitor_thread = None
-
         # 用于UI更新的回调函数
         self.callback = callback
 
@@ -114,68 +135,41 @@ class ClipboardImageScalerCore:
         return True
 
     def start_monitoring(self):
-        """
-        开始监控粘贴板图像变化
-
-        返回:
-        是否成功启动监控
-        """
-        if not self.monitoring:
-            self.monitoring = True
-            self.monitor_thread = threading.Thread(target=self.monitor_clipboard)
-            self.monitor_thread.daemon = True
-            self.monitor_thread.start()
-            return True
-        return False
+        """开始监控（对应启动按钮）"""
+        if self.core.start():
+            # UI状态更新
+            self.start_btn.setEnabled(False)
+            self.stop_btn.setEnabled(True)
+            self.status_animator.start("正在监控剪贴板...", *STATUS_COLORS["success"])
 
     def stop_monitoring(self):
-        """
-        停止监控粘贴板
+        """停止监控（对应停止按钮）"""
+        if self.core.stop():
+            # UI状态更新
+            self.start_btn.setEnabled(True)
+            self.stop_btn.setEnabled(False)
+            self.status_animator.set_static_color("监控已停止", THEME["warning"])
 
-        返回:
-        是否成功停止监控
-        """
-        if self.monitoring:
-            self.monitoring = False
-            return True
-        return False
-
-    def monitor_clipboard(self):
-        """监控粘贴板变化"""
-        # 设置初始粘贴板序列号
+    def run(self):
+        """主运行逻辑"""
         self.last_clipboard_seq = win32clipboard.GetClipboardSequenceNumber()
 
-        while self.monitoring:
+        # 使用running代替monitoring标志
+        while self.running:  # 注意这里是self.running
             try:
-                # 获取当前粘贴板序列号
                 current_seq = win32clipboard.GetClipboardSequenceNumber()
-
-                # 如果粘贴板内容发生变化
                 if current_seq != self.last_clipboard_seq:
-                    # 更新序列号
                     self.last_clipboard_seq = current_seq
-
-                    # 尝试获取粘贴板图像
                     img = ImageGrab.grabclipboard()
-
-                    # 如果检测到图像
                     if isinstance(img, Image.Image):
-                        # 更新状态
                         if self.callback:
                             self.callback("status", "检测到新图像，正在处理...")
-
-                        # 转换为OpenCV格式
                         self.last_image = self.pil_to_cv2(img)
-
-                        # 处理图像
                         self.process_image()
-
+                        threading.Event().wait(0.1)
             except Exception as e:
                 if self.callback:
                     self.callback("error", f"粘贴板读取错误: {str(e)}")
-                pass
-
-            # 线程休眠一小段时间，避免CPU过度使用
             threading.Event().wait(0.1)
 
     def pil_to_cv2(self, pil_image):

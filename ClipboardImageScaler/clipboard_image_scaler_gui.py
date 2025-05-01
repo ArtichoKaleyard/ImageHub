@@ -346,17 +346,16 @@ class ClipboardImageScalerGUI(QWidget):
 
     def start_monitoring(self):
         """开始监控粘贴板"""
-        if self.core.start_monitoring():
+        if self.core.start():  # 直接调用核心类的start()方法
             self.start_btn.setEnabled(False)
             self.stop_btn.setEnabled(True)
             self.status_animator.start("正在监控粘贴板...", *STATUS_COLORS["normal"])
 
     def stop_monitoring(self):
         """停止监控粘贴板"""
-        if self.core.stop_monitoring():
+        if self.core.stop():  # 直接调用核心类的stop()方法
             self.start_btn.setEnabled(True)
             self.stop_btn.setEnabled(False)
-            # 使用新的静态颜色方法而非动画
             self.status_animator.set_static_color("监控已停止", THEME["warning"])
 
     def update_status(self, message):
