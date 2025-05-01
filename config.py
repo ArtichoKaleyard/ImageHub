@@ -101,7 +101,7 @@ DARK_THEME = {
 
     # 状态颜色
     "success": "#00E676",
-    "warning": "#FFEA00",
+    "warning": "#CCBB00",
     "error": "#FF5252",
     "info": "#40C4FF",
 
@@ -141,6 +141,22 @@ ANIMATION_SPEED = {
     "fast": 80,
 }
 
+# 基础字体样式
+FONT_STYLE = f"""
+    font-family: "{FONTS["default"]["family"]}";
+"""
+
+TITLE_FONT_STYLE = f"""
+    font-family: "{FONTS["title"]["family"]}";
+    font-size: {FONTS["title"]["size"]}pt;
+    font-weight: bold;
+"""
+
+SMALL_FONT_STYLE = f"""
+    font-family: "{FONTS["small"]["family"]}";
+    font-size: {FONTS["small"]["size"]}pt;
+"""
+
 # ---------------------- 按钮样式 ----------------------
 
 # 主按钮样式 - 带光泽感和悬停动画
@@ -152,9 +168,10 @@ PRIMARY_BUTTON_STYLE = f"""
         border-radius: 8px;
         padding: 8px 16px;
         font-weight: bold;
-        min-height: 30px;
+        min-height: 20px;
         min-width: 80px;
         outline: none;
+        {FONT_STYLE}
     }}
     QPushButton:hover {{
         background-color: {THEME["primary_light"]};
@@ -180,9 +197,10 @@ SECONDARY_BUTTON_STYLE = f"""
         border-radius: 8px;
         padding: 8px 16px;
         font-weight: bold;
-        min-height: 30px;
+        min-height: 20px;
         min-width: 80px;
         outline: none;
+        {FONT_STYLE}
     }}
     QPushButton:hover {{
         background-color: {THEME["secondary_light"]};
@@ -212,6 +230,7 @@ INPUT_STYLE = f"""
         selection-background-color: {THEME["primary_light"]};
         selection-color: white;
         transition: border 0.3s ease;
+        {FONT_STYLE}
     }}
     QLineEdit:hover {{
         border: 2px solid {THEME["primary_light"]};
@@ -234,21 +253,28 @@ GROUP_BOX_STYLE = f"""
         padding: 15px 10px 10px 10px;
         font-weight: bold;
         color: {THEME["text"]};
+        {TITLE_FONT_STYLE}
     }}
     QGroupBox::title {{
         subcontrol-origin: margin;
         left: 10px;
         top: 10px;
         padding: 0 5px;
-        background-color: {THEME["background"]};  # 使用不透明背景
+        background-color: {THEME["background"]};
         color: {THEME["text"]};
     }}
-
-    /* 添加这一块来处理GroupBox内的标签 */
+    
+    /* 确保GroupBox内所有标签都透明 */
     QGroupBox QLabel {{
-        background-color: transparent;
+        background-color: transparent !important;
+        color: {THEME["text"]};
+        {FONT_STYLE}
     }}
 """
+
+# print({THEME["text"]})
+arrow_icon = "icons/chevron_down_light.svg" if DARK_MODE else "icons/chevron_down_dark.svg"
+# print(arrow_icon)
 
 # 下拉菜单样式 - 现代化风格
 COMBO_BOX_STYLE = f"""
@@ -261,6 +287,7 @@ COMBO_BOX_STYLE = f"""
         min-height: 25px;
         selection-background-color: {THEME["primary"]};
         selection-color: white;
+        {FONT_STYLE}
     }}
     QComboBox:hover {{
         border: 2px solid {THEME["primary_light"]};
@@ -277,11 +304,9 @@ COMBO_BOX_STYLE = f"""
         border-bottom-right-radius: 3px;
     }}
     QComboBox::down-arrow {{
-        image: none;
+        image: url({arrow_icon});
         width: 18px;
         height: 18px;
-        background-color: {THEME["primary"]};
-        clip-path: polygon(50% 75%, 25% 25%, 75% 25%);
     }}
     QComboBox QAbstractItemView {{
         border: 1px solid {THEME["border"]};
@@ -289,17 +314,17 @@ COMBO_BOX_STYLE = f"""
         selection-background-color: {THEME["primary"]};
         background-color: {THEME["card_background"]};
         color: {THEME["text"]};
+        {FONT_STYLE}
     }}
 """
 
-# 复选框样式 - 动画效果
-# 修改复选框样式 - 使用Qt原生渲染方式
+# 复选框样式 - 使用Qt原生渲染方式
 CHECK_BOX_STYLE = f"""
     QCheckBox {{
         spacing: 8px;
         color: {THEME["text"]};
+        {FONT_STYLE}
     }}
-
     QCheckBox::indicator {{
         width: 18px;
         height: 18px;
@@ -307,17 +332,13 @@ CHECK_BOX_STYLE = f"""
         border-radius: 4px;
         background: {THEME["card_background"]};
     }}
-
     QCheckBox::indicator:checked {{
-        background-color: {THEME["primary"]};
+        image: url(icons/check_icon.svg);
         border-color: {THEME["primary_dark"]};
-        /* 让Qt使用默认对钩 */
     }}
-
     QCheckBox::indicator:hover {{
         border-color: {THEME["primary"]};
     }}
-
     QCheckBox::indicator:disabled {{
         background: {THEME["divider"]};
         border-color: {THEME["border"]};
@@ -325,19 +346,19 @@ CHECK_BOX_STYLE = f"""
 """
 
 # 状态栏样式 - 流动效果
-# 注意：流动效果需要在代码中使用QTimer来实现
 STATUS_BAR_STYLE = f"""
     QLabel#StatusLabel {{
         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                     stop:0 {THEME["primary_dark"]}, 
-                     stop:0.3 {THEME["primary"]},
-                     stop:0.6 {THEME["primary"]}, 
-                     stop:1 {THEME["secondary_dark"]});
+                     stop:0 {THEME["primary"]}, 
+                     stop:0.3 {THEME["primary_dark"]},
+                     stop:0.6 {THEME["primary_dark"]}, 
+                     stop:1 {THEME["primary"]});
         color: white;
         padding: 8px 12px;
         border-radius: 5px;
         font-weight: bold;
         margin: 2px;
+        {FONT_STYLE}
     }}
 """
 
@@ -353,7 +374,7 @@ STATUS_FRAME_STYLE = f"""
 # 图像标签样式 - 阴影边框
 IMAGE_LABEL_STYLE = f"""
     QLabel {{
-        background-color: {THEME["blur_background"]};  # 使用半透明背景
+        background-color: {THEME["blur_background"]};
         border: 1px solid {THEME["border"]};
         border-radius: 8px;
         padding: 2px;
@@ -361,13 +382,21 @@ IMAGE_LABEL_STYLE = f"""
 """
 
 # 信息标签样式
-# 检查并确保信息标签没有背景色
 INFO_LABEL_STYLE = f"""
     QLabel {{
         color: {THEME["text_light"]};
-        background-color: transparent;  # 确保这里是透明的
+        background-color: transparent !important;
         padding: 4px;
-        font-size: 9pt;
+        {SMALL_FONT_STYLE}
+    }}
+"""
+
+# 标准标签样式
+LABEL_STYLE = f"""
+    QLabel {{
+        color: {THEME["text"]};
+        background-color: transparent !important;
+        {FONT_STYLE}
     }}
 """
 
@@ -411,30 +440,38 @@ SCROLLBAR_STYLE = f"""
     }}
 """
 
-# 主应用程序样式
+# 主应用程序样式 - 全局默认样式
 APP_STYLE = f"""
+    /* 基础应用程序样式 */
     QMainWindow, QWidget {{
         background-color: {THEME["background"]};
         color: {THEME["text"]};
+        {FONT_STYLE}
     }}
-
-    /* 加强QLabel透明度设置 */
+    
+    /* 确保所有标签默认透明 */
     QLabel {{
         color: {THEME["text"]};
-        background-color: transparent !important;  /* 添加!important强制优先级 */
+        background-color: transparent !important;
+        {FONT_STYLE}
     }}
+    
+    /* 分隔符样式 */
     QSplitter::handle {{
         background-color: {THEME["border"]};
     }}
+    
+    /* 工具提示样式 */
     QToolTip {{
         background-color: {THEME["card_background"]};
         color: {THEME["text"]};
         border: 1px solid {THEME["primary"]};
         padding: 5px;
         border-radius: 4px;
+        {FONT_STYLE}
     }}
-
-    /* 添加其他组件样式引用 */
+    
+    /* 包含全局滚动条样式 */
     {SCROLLBAR_STYLE}
 """
 
@@ -442,85 +479,147 @@ APP_STYLE = f"""
 # ---------------------- 状态动画类 ----------------------
 
 class StatusAnimator:
-    """状态栏动画控制器"""
+    """状态栏动画控制器 - 简化版流动效果"""
 
     def __init__(self, status_label):
+        """初始化状态动画控制器
+
+        Args:
+            status_label: 要应用动画效果的QLabel
+        """
         self.label = status_label
         self.timer = QTimer()
-        self.gradientPos = 0.0
-        self.active = False
-        self.direction = 1  # 1 = 向右, -1 = 向左
-        self.timer.timeout.connect(self.update_gradient)
+        self.animation_pos = 0  # 动画位置标记 (0-100)
+        self.direction = 1  # 动画方向 (1=正向, -1=反向)
+        self.current_colors = None  # 当前使用的颜色元组
+        self.message = ""  # 当前显示的消息
 
-    def start(self, message, color_start=None, color_end=None):
-        """开始动画"""
-        if not color_start:
-            color_start = THEME["info"]
-        if not color_end:
-            color_end = THEME["primary"]
+        # 设置定时器
+        self.timer.timeout.connect(self.update_animation)
+        self.timer.setInterval(10)  # 10ms更新一次
 
+    def start(self, message, color_start, color_end=None):
+        """开始状态动画
+
+        Args:
+            message: 要显示的状态消息
+            color_start: 起始颜色
+            color_end: 结束颜色，如不指定则使用起始颜色
+        """
+        self.message = message
         self.label.setText(message)
-        self.active = True
-        self.gradientPos = 0.0
+
+        # 设置颜色
+        if not color_end:
+            color_end = color_start
+        self.current_colors = (color_start, color_end)
+
+        # 重置动画参数
+        self.animation_pos = 0
         self.direction = 1
-        self.update_colors(color_start, color_end)
+
+        # 应用初始渐变
+        self._update_gradient()
+
+        # 启动定时器
         if not self.timer.isActive():
-            self.timer.start(50)  # 每50ms更新一次
+            self.timer.start()
 
     def stop(self):
         """停止动画"""
         if self.timer.isActive():
             self.timer.stop()
-        self.active = False
-        # 重置为透明背景
-        self.label.setStyleSheet(f"""
-            background-color: transparent;
-            color: {THEME["text"]};
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-weight: bold;
-            margin: 2px;
-        """)
 
-    def update_colors(self, color_start, color_end):
-        """更新颜色"""
-        self.color_start = color_start
-        self.color_end = color_end
+        # 恢复默认样式
+        self.label.setStyleSheet(STATUS_BAR_STYLE)
 
-    def update_gradient(self):
-        """更新渐变位置"""
-        if not self.active:
-            return
-
+    def update_animation(self):
+        """更新动画状态"""
         # 更新位置
-        self.gradientPos += 0.02 * self.direction
-        if self.gradientPos >= 1.0:
+        self.animation_pos += (self.direction * 5)  # 每步移动5个单位
+
+        # 检查边界并反转方向
+        if self.animation_pos >= 1000:
+            self.animation_pos = 0
             self.direction = -1
-        elif self.gradientPos <= 0.0:
+        elif self.animation_pos <= 0:
+            self.animation_pos = 0
             self.direction = 1
 
-        # 设置新的渐变
-        stop1 = max(0.0, self.gradientPos - 0.3)
-        stop2 = self.gradientPos
-        stop3 = min(1.0, self.gradientPos + 0.3)
+        # 更新渐变效果
+        self._update_gradient()
 
-        self.label.setStyleSheet(f"""
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
-                        stop:{stop1} {self.color_start}, 
-                        stop:{stop2} {self.color_end}, 
-                        stop:{stop3} {self.color_start});
+    def set_static_color(self, message, color):
+        """设置静态颜色状态 - 不使用动画
+
+        Args:
+            message: 要显示的状态消息
+            color: 要应用的颜色
+        """
+        self.message = message
+        self.label.setText(message)
+
+        # 停止任何正在运行的动画
+        if self.timer.isActive():
+            self.timer.stop()
+
+        # 应用静态颜色样式
+        static_style = f"""
+            background-color: {color};
             color: white;
             padding: 8px 12px;
             border-radius: 5px;
             font-weight: bold;
             margin: 2px;
-        """)
+        """
+        self.label.setStyleSheet(static_style)
+
+    def _update_gradient(self):
+        """更新标签的渐变背景"""
+        if not self.current_colors:
+            return
+
+        color1, color2 = self.current_colors
+        pos = self.animation_pos / 1000.0  # 转换为0-1范围
+
+        # 创建流动渐变效果
+        gradient_style = f"""
+            background: qlineargradient(
+                x1:0, y1:0, x2:1, y2:0,
+                stop:0 {color1},
+                stop:{pos-0.1} {color1},
+                stop:{pos-0.015} {color2},
+                stop:{pos} {color2},
+                stop:{pos+0.011} {color1},
+                stop:1 {color1}
+            );
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 2px;
+        """
+
+        self.label.setStyleSheet(gradient_style)
 
 
-# 状态消息配色方案
+# 在config.py中添加辅助函数
+def with_alpha(color_hex, alpha):
+    """将十六进制颜色转换为带透明度的RGBA字符串"""
+    if color_hex.startswith("#"):
+        color_hex = color_hex.lstrip("#")
+        # 假设原颜色为6位，不考虑alpha通道
+        r = int(color_hex[0:2], 16)
+        g = int(color_hex[2:4], 16)
+        b = int(color_hex[4:6], 16)
+        return f"rgba({r}, {g}, {b}, {alpha})"
+    else:
+        return color_hex  # 非十六进制颜色保持不变（如预定义的rgba）
+
+# 状态消息配色方案（带50%透明度）
 STATUS_COLORS = {
-    "normal": (THEME["info"], THEME["primary"]),
-    "success": (THEME["success"], THEME["secondary"]),
-    "error": (THEME["error"], THEME["primary"]),
-    "warning": (THEME["warning"], THEME["secondary"]),
+    "normal": (with_alpha(THEME["primary"], 0.5), with_alpha(THEME["info"], 0.5)),
+    "success": (with_alpha(THEME["secondary"], 0.5), with_alpha(THEME["success"], 0.5)),
+    "error": (with_alpha(THEME["primary"], 0.5), with_alpha(THEME["error"], 0.5)),
+    "warning": (with_alpha(THEME["secondary"], 0.5), with_alpha(THEME["warning"], 0.5)),
 }

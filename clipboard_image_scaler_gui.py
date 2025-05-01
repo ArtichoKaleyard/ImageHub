@@ -3,16 +3,16 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QLineEdit, QPushButton, QComboBox, QCheckBox, QGroupBox, QFrame,
                              QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QPropertyAnimation, QEasingCurve, QRect
-from PyQt6.QtGui import QPixmap, QImage, QFont, QColor
+from PyQt6.QtGui import QPixmap, QImage, QFont, QColor, QPalette
 
 import cv2
 import numpy as np
 
 from clipboard_image_scaler_core import ClipboardImageScalerCore
 from config import (THEME, APP_STYLE, ANIMATION_SPEED, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE,
-                          INPUT_STYLE, GROUP_BOX_STYLE, COMBO_BOX_STYLE, CHECK_BOX_STYLE,
-                          STATUS_BAR_STYLE, IMAGE_LABEL_STYLE, INFO_LABEL_STYLE,
-                          STATUS_FRAME_STYLE, StatusAnimator, STATUS_COLORS)
+                    INPUT_STYLE, GROUP_BOX_STYLE, COMBO_BOX_STYLE, CHECK_BOX_STYLE,
+                    STATUS_BAR_STYLE, IMAGE_LABEL_STYLE, INFO_LABEL_STYLE, LABEL_STYLE,
+                    STATUS_FRAME_STYLE, StatusAnimator, STATUS_COLORS, FONT_STYLE, TITLE_FONT_STYLE)
 
 
 class ClipboardImageScalerGUI(QMainWindow):
@@ -56,19 +56,25 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.setup_animations()
 
         # 在所有初始化完成后，强制所有标签背景透明
+        self.force_transparent_labels()
+
+    def force_transparent_labels(self):
+        """确保所有标签背景透明"""
         for label in self.findChildren(QLabel):
+            # 检查当前样式表是否包含背景色设置
             current_style = label.styleSheet()
+            # 确保背景透明
             if "background-color" not in current_style:
                 label.setStyleSheet(current_style + "background-color: transparent;")
 
     def set_fonts(self):
         """设置应用程序字体"""
-        default_font = QFont("Microsoft YaHei UI", 10)
-        QApplication.setFont(default_font)
-
-        title_font = QFont("Microsoft YaHei UI", 12)
+        # 使用配置中的字体样式，而不是硬编码字体
+        title_font = QFont()
         title_font.setBold(True)
+        title_font.setPointSize(12)
 
+        # 为所有组框设置标题字体
         for group_box in self.findChildren(QGroupBox):
             group_box.setFont(title_font)
 
@@ -90,14 +96,18 @@ class ClipboardImageScalerGUI(QMainWindow):
         target_layout = QVBoxLayout(target_group)
 
         width_layout = QHBoxLayout()
-        width_layout.addWidget(QLabel("宽度:"))
+        width_label = QLabel("宽度:")
+        width_label.setStyleSheet(LABEL_STYLE)
+        width_layout.addWidget(width_label)
         self.width_edit = QLineEdit(str(self.core.target_width))
         self.width_edit.setStyleSheet(INPUT_STYLE)
         width_layout.addWidget(self.width_edit)
         target_layout.addLayout(width_layout)
 
         height_layout = QHBoxLayout()
-        height_layout.addWidget(QLabel("高度:"))
+        height_label = QLabel("高度:")
+        height_label.setStyleSheet(LABEL_STYLE)
+        height_layout.addWidget(height_label)
         self.height_edit = QLineEdit(str(self.core.target_height))
         self.height_edit.setStyleSheet(INPUT_STYLE)
         height_layout.addWidget(self.height_edit)
@@ -107,7 +117,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.adjust_larger_check.setChecked(self.core.auto_adjust_larger_size)
         self.adjust_larger_check.setEnabled(self.core.target_height == 1080)
         self.adjust_larger_check.stateChanged.connect(self.on_auto_adjust_changed)
-        # self.adjust_larger_check.setStyleSheet(CHECK_BOX_STYLE)
+        self.adjust_larger_check.setStyleSheet(CHECK_BOX_STYLE)
         target_layout.addWidget(self.adjust_larger_check)
 
         self.apply_size_btn = QPushButton("应用尺寸")
@@ -123,14 +133,18 @@ class ClipboardImageScalerGUI(QMainWindow):
         options_layout = QVBoxLayout(options_group)
 
         tolerance_layout = QHBoxLayout()
-        tolerance_layout.addWidget(QLabel("纵横比容差(0.0-1.0):"))
+        tolerance_label = QLabel("纵横比容差(0.0-1.0):")
+        tolerance_label.setStyleSheet(LABEL_STYLE)
+        tolerance_layout.addWidget(tolerance_label)
         self.tolerance_edit = QLineEdit(str(self.core.tolerance))
         self.tolerance_edit.setStyleSheet(INPUT_STYLE)
         tolerance_layout.addWidget(self.tolerance_edit)
         options_layout.addLayout(tolerance_layout)
 
         algorithm_layout = QHBoxLayout()
-        algorithm_layout.addWidget(QLabel("缩放算法:"))
+        algorithm_label = QLabel("缩放算法:")
+        algorithm_label.setStyleSheet(LABEL_STYLE)
+        algorithm_layout.addWidget(algorithm_label)
         self.algorithm_combo = QComboBox()
         self.algorithm_combo.setStyleSheet(COMBO_BOX_STYLE)
         self.algorithm_combo.addItems(["最近邻", "双线性", "双三次", "Lanczos"])
@@ -140,7 +154,7 @@ class ClipboardImageScalerGUI(QMainWindow):
 
         self.auto_copy_check = QCheckBox("自动将调整后的图像复制回粘贴板")
         self.auto_copy_check.setChecked(self.core.auto_copy_back)
-        # self.auto_copy_check.setStyleSheet(CHECK_BOX_STYLE)
+        self.auto_copy_check.setStyleSheet(CHECK_BOX_STYLE)
         options_layout.addWidget(self.auto_copy_check)
 
         self.apply_options_btn = QPushButton("应用选项")
@@ -220,10 +234,10 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.original_image_label.setScaledContents(False)
         self.original_image_label.setStyleSheet(IMAGE_LABEL_STYLE)
         original_layout.addWidget(self.original_image_label)
+
         # 原始图像信息标签
         self.original_info_label = QLabel("原始尺寸: -")
-        self.original_info_label.setStyleSheet(
-            f"background-color: transparent; color: {THEME['text_light']}; padding: 4px; font-size: 9pt;")
+        self.original_info_label.setStyleSheet(INFO_LABEL_STYLE)
         original_layout.addWidget(self.original_info_label)
         self.image_layout.addWidget(self.original_group)
 
@@ -239,10 +253,10 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.scaled_image_label.setScaledContents(False)
         self.scaled_image_label.setStyleSheet(IMAGE_LABEL_STYLE)
         scaled_layout.addWidget(self.scaled_image_label)
+
         # 缩放图像信息标签
         self.scaled_info_label = QLabel("调整后尺寸: -")
-        self.scaled_info_label.setStyleSheet(
-            f"background-color: transparent; color: {THEME['text_light']}; padding: 4px; font-size: 9pt;")
+        self.scaled_info_label.setStyleSheet(INFO_LABEL_STYLE)
         scaled_layout.addWidget(self.scaled_info_label)
         self.image_layout.addWidget(self.scaled_group)
 
@@ -344,7 +358,8 @@ class ClipboardImageScalerGUI(QMainWindow):
         if self.core.stop_monitoring():
             self.start_btn.setEnabled(True)
             self.stop_btn.setEnabled(False)
-            self.status_animator.start("监控已停止", *STATUS_COLORS["warning"])
+            # 使用新的静态颜色方法而非动画
+            self.status_animator.set_static_color("监控已停止", THEME["warning"])
 
     def update_status(self, message):
         """更新状态消息"""
@@ -397,12 +412,6 @@ class ClipboardImageScalerGUI(QMainWindow):
             # 使用面积比来计算显示大小比例
             area_ratio = self.scaled_area / self.original_area if self.original_area > 0 else 1.0
 
-            # 获取两个标签的可用空间
-            orig_label_width = self.original_image_label.width()
-            orig_label_height = self.original_image_label.height()
-            scal_label_width = self.scaled_image_label.width()
-            scal_label_height = self.scaled_image_label.height()
-
             # 基于面积比例和可用空间，确定合适的显示比例
             if area_ratio < 1.0:  # 缩放后图像更小
                 orig_size_ratio = 1.0
@@ -426,15 +435,6 @@ class ClipboardImageScalerGUI(QMainWindow):
                 size_ratio=scal_size_ratio,
                 force_redraw=True
             )
-
-            # 如果需要动画效果，可以用以下代码替代上面的立即更新部分
-            # self.animating = True
-            # QTimer.singleShot(ANIMATION_SPEED["fast"], lambda: self.complete_image_update(
-            #     self.scaled_image_label,
-            #     self.last_scaled_image,
-            #     size_ratio=scal_size_ratio,
-            #     force_redraw=True
-            # ))
 
     def complete_image_update(self, label, cv_image, size_ratio=1.0, force_redraw=False):
         """完成图像更新，同时结束动画状态"""
@@ -511,25 +511,29 @@ class ClipboardImageScalerGUI(QMainWindow):
 
 
 # 在应用程序初始化代码中添加全局调色板设置
-from PyQt6.QtGui import QPalette, QColor
-
-
 def apply_global_palette():
+    """应用全局调色板设置，确保复选框等控件正确显示"""
     palette = QApplication.palette()
     # 设置关键调色板角色
     palette.setColor(QPalette.ColorRole.WindowText, QColor(THEME["text"]))
     palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))  # 对钩的颜色
     palette.setColor(QPalette.ColorRole.Highlight, QColor(THEME["primary"]))  # 选中背景色
 
-    # 添加这一行，确保对钩正确显示
+    # 确保对钩正确显示
     palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))  # 对钩颜色
+
+    # 设置复选框文本颜色
+    palette.setColor(QPalette.ColorRole.Text, QColor(THEME["text"]))
+
+    # 应用调色板
     QApplication.setPalette(palette)
+
 
 # 在main函数中调用
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     apply_global_palette()  # 必须在窗口创建前调用
-    QApplication.setStyle("Fusion")  # 强制使用Fusion引擎
+    QApplication.setStyle("Fusion")  # 使用Fusion样式引擎以确保跨平台一致性
     window = ClipboardImageScalerGUI()
     window.show()
     sys.exit(app.exec())
