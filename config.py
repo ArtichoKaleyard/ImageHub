@@ -149,7 +149,7 @@ FONT_STYLE = f"""
 TITLE_FONT_STYLE = f"""
     font-family: "{FONTS["title"]["family"]}";
     font-size: {FONTS["title"]["size"]}pt;
-    font-weight: bold;
+    font-weight: normal;
 """
 
 SMALL_FONT_STYLE = f"""
@@ -351,7 +351,7 @@ STATUS_BAR_STYLE = f"""
         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                      stop:0 {THEME["primary"]}, 
                      stop:0.3 {THEME["primary_dark"]},
-                     stop:0.6 {THEME["primary_dark"]}, 
+                     stop:0.7 {THEME["primary_dark"]}, 
                      stop:1 {THEME["primary"]});
         color: white;
         padding: 8px 12px;
@@ -616,10 +616,10 @@ def with_alpha(color_hex, alpha):
     else:
         return color_hex  # 非十六进制颜色保持不变（如预定义的rgba）
 
-# 状态消息配色方案（带50%透明度）
+# 状态消息配色方案（带60%透明度）
 STATUS_COLORS = {
-    "normal": (with_alpha(THEME["primary"], 0.5), with_alpha(THEME["info"], 0.5)),
-    "success": (with_alpha(THEME["secondary"], 0.5), with_alpha(THEME["success"], 0.5)),
-    "error": (with_alpha(THEME["primary"], 0.5), with_alpha(THEME["error"], 0.5)),
-    "warning": (with_alpha(THEME["secondary"], 0.5), with_alpha(THEME["warning"], 0.5)),
+    "normal": (with_alpha(THEME["primary"], 0.6), with_alpha(THEME["info"], 0.6)),
+    "success": (with_alpha(THEME["secondary"], 0.6), with_alpha(THEME["success"], 0.6)),
+    "error": (with_alpha(THEME["primary"], 0.6), with_alpha(THEME["error"], 0.6)),
+    "warning": (with_alpha(THEME["secondary"], 0.6), with_alpha(THEME["warning"], 0.6)),
 }

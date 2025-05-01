@@ -96,7 +96,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         target_layout = QVBoxLayout(target_group)
 
         width_layout = QHBoxLayout()
-        width_label = QLabel("宽度:")
+        width_label = QLabel("宽 度:")
         width_label.setStyleSheet(LABEL_STYLE)
         width_layout.addWidget(width_label)
         self.width_edit = QLineEdit(str(self.core.target_width))
@@ -105,7 +105,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         target_layout.addLayout(width_layout)
 
         height_layout = QHBoxLayout()
-        height_label = QLabel("高度:")
+        height_label = QLabel("高 度:")
         height_label.setStyleSheet(LABEL_STYLE)
         height_layout.addWidget(height_label)
         self.height_edit = QLineEdit(str(self.core.target_height))
@@ -120,7 +120,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.adjust_larger_check.setStyleSheet(CHECK_BOX_STYLE)
         target_layout.addWidget(self.adjust_larger_check)
 
-        self.apply_size_btn = QPushButton("应用尺寸")
+        self.apply_size_btn = QPushButton("应 用 尺 寸")
         self.apply_size_btn.setStyleSheet(PRIMARY_BUTTON_STYLE)
         self.apply_size_btn.clicked.connect(self.apply_target_size)
         target_layout.addWidget(self.apply_size_btn)
@@ -133,7 +133,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         options_layout = QVBoxLayout(options_group)
 
         tolerance_layout = QHBoxLayout()
-        tolerance_label = QLabel("纵横比容差(0.0-1.0):")
+        tolerance_label = QLabel("纵 横 比 容 差 (0.0-1.0):")
         tolerance_label.setStyleSheet(LABEL_STYLE)
         tolerance_layout.addWidget(tolerance_label)
         self.tolerance_edit = QLineEdit(str(self.core.tolerance))
@@ -142,7 +142,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         options_layout.addLayout(tolerance_layout)
 
         algorithm_layout = QHBoxLayout()
-        algorithm_label = QLabel("缩放算法:")
+        algorithm_label = QLabel("缩 放 算 法:")
         algorithm_label.setStyleSheet(LABEL_STYLE)
         algorithm_layout.addWidget(algorithm_label)
         self.algorithm_combo = QComboBox()
@@ -157,7 +157,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.auto_copy_check.setStyleSheet(CHECK_BOX_STYLE)
         options_layout.addWidget(self.auto_copy_check)
 
-        self.apply_options_btn = QPushButton("应用选项")
+        self.apply_options_btn = QPushButton("应 用 选 项")
         self.apply_options_btn.setStyleSheet(PRIMARY_BUTTON_STYLE)
         self.apply_options_btn.clicked.connect(self.apply_options)
         options_layout.addWidget(self.apply_options_btn)
@@ -177,7 +177,7 @@ class ClipboardImageScalerGUI(QMainWindow):
         self.status_frame.setStyleSheet(STATUS_FRAME_STYLE)
         self.status_frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         status_layout = QHBoxLayout(self.status_frame)
-        self.status_label = QLabel("就绪")
+        self.status_label = QLabel("就 绪")
         self.status_label.setObjectName("StatusLabel")  # 添加ID以便样式表识别
         self.status_label.setStyleSheet(STATUS_BAR_STYLE)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -192,9 +192,9 @@ class ClipboardImageScalerGUI(QMainWindow):
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.setSpacing(10)
 
-        self.start_btn = QPushButton("开始监控")
-        self.stop_btn = QPushButton("停止监控")
-        self.copy_btn = QPushButton("复制到粘贴板")
+        self.start_btn = QPushButton("开 始 监 控")
+        self.stop_btn = QPushButton("停 止 监 控")
+        self.copy_btn = QPushButton("复 制 到 粘 贴 板")
 
         for btn in [self.start_btn, self.stop_btn, self.copy_btn]:
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
