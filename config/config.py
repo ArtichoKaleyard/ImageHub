@@ -126,7 +126,7 @@ FONTS = {
     },
     "title": {
         "family": "Microsoft YaHei UI",
-        "size": 12,
+        "size": 11,
     },
     "small": {
         "family": "Microsoft YaHei UI",
@@ -156,6 +156,56 @@ SMALL_FONT_STYLE = f"""
     font-family: "{FONTS["small"]["family"]}";
     font-size: {FONTS["small"]["size"]}pt;
 """
+
+# ---------------------- 标签样式 ----------------------
+Q_TAB_WIDGET_STYLE = f"""
+    /* 设置整个标签栏的背景色（不同于内容区域） */
+    QTabBar {{
+        background-color: {THEME["background"]};  /* 与背景色一致 */
+    }}
+    /* 关键样式：使标签栏整体向右偏移，左侧留出空间 */
+    QTabWidget::tab-bar {{
+        left: 5px; /* 向右移动标签栏，左侧留出5px */
+    }}
+    /* 未选中标签样式 */
+    QTabBar::tab {{
+        background-color: {THEME["card_background"]};  /* 默认标题栏颜色 */
+        color: {THEME["text"]};                         /* 文字颜色 */
+        padding: 6px 12px;                             /* 内边距 */
+        border: 1px solid {THEME["border"]};  /* 添加边框 */
+        border-top-left-radius: 6px;                    /* 圆角 */
+        border-top-right-radius: 6px;                   /* 圆角 */
+        margin: 0px 2px;                                /* 标签水平间距 */
+        font-weight: bold;                              /* 加粗字体 */
+        {TITLE_FONT_STYLE}
+    }}
+
+    /* 悬停状态 */
+    QTabBar::tab:hover {{
+        background-color: {THEME["primary_light"]};     /* 悬停颜色 */
+    }}
+
+    /* 选中标签样式 */
+    QTabBar::tab:selected {{
+        border: 1px solid {THEME["border"]};  /* 添加边框 */
+        background-color: {THEME["background"]};        /* 与内容区域一致 */
+        color: {THEME["text"]};                         /* 文字颜色 */
+        border-bottom-color: transparent;               /* 去掉底部边框，避免冲突 */
+    }}
+
+    /* 内容区域样式 */
+    QTabWidget::pane {{
+        border: 2px solid {THEME["border"]};            /* 保留顶部边框 */
+        border-left: none;                              /* 去掉左侧边框 */
+        border-right: none;                             /* 去掉右侧边框 */
+        border-bottom: none;                            /* 去掉底部边框 */
+        border-top-color: {THEME["border"]};   /* 与边框颜色一致 */
+        border-radius: 6px;                             /* 圆角 */
+        background-color: {THEME["background"]};        /* 内容区域背景色 */
+        margin-top: -2px;                               /* 与标签栏无缝衔接 */
+    }}
+"""
+
 
 # ---------------------- 按钮样式 ----------------------
 
@@ -249,16 +299,16 @@ GROUP_BOX_STYLE = f"""
         background-color: {THEME["blur_background"]};
         border: 1px solid {THEME["border"]};
         border-radius: 8px;
-        margin-top: 20px;
-        padding: 15px 10px 10px 10px;
+        margin-top: 10px;
+        padding: 2px 2px 2px 2px;
         font-weight: bold;
         color: {THEME["text"]};
         {TITLE_FONT_STYLE}
     }}
     QGroupBox::title {{
         subcontrol-origin: margin;
-        left: 10px;
-        top: 10px;
+        left: 15px;
+        top: 0px;
         padding: 0 5px;
         background-color: {THEME["background"]};
         color: {THEME["text"]};

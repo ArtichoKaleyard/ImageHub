@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QComboBox, QCheckBox, QGroupBox, QFrame,
                              QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QPropertyAnimation, QEasingCurve, QRect
@@ -8,14 +8,14 @@ from PyQt6.QtGui import QPixmap, QImage, QFont, QColor, QPalette
 import cv2
 import numpy as np
 
-from clipboard_image_scaler_core import ClipboardImageScalerCore
-from config import (THEME, APP_STYLE, ANIMATION_SPEED, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE,
-                    INPUT_STYLE, GROUP_BOX_STYLE, COMBO_BOX_STYLE, CHECK_BOX_STYLE,
-                    STATUS_BAR_STYLE, IMAGE_LABEL_STYLE, INFO_LABEL_STYLE, LABEL_STYLE,
-                    STATUS_FRAME_STYLE, StatusAnimator, STATUS_COLORS, FONT_STYLE, TITLE_FONT_STYLE)
+from ClipboardImageScaler.clipboard_image_scaler_core import ClipboardImageScalerCore
+from config.config import (THEME, APP_STYLE, ANIMATION_SPEED, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE,
+                           INPUT_STYLE, GROUP_BOX_STYLE, COMBO_BOX_STYLE, CHECK_BOX_STYLE,
+                           STATUS_BAR_STYLE, IMAGE_LABEL_STYLE, INFO_LABEL_STYLE, LABEL_STYLE,
+                           STATUS_FRAME_STYLE, StatusAnimator, STATUS_COLORS)
 
 
-class ClipboardImageScalerGUI(QMainWindow):
+class ClipboardImageScalerGUI(QWidget):
     def __init__(self):
         """初始化图像缩放器GUI"""
         super().__init__()
@@ -80,9 +80,7 @@ class ClipboardImageScalerGUI(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面"""
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        main_layout = QVBoxLayout(self)  # 直接设置到 self（即 QWidget）
         main_layout.setSpacing(12)  # 增加组件间距
 
         # ---- 设置区域 ----
