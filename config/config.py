@@ -182,7 +182,8 @@ Q_TAB_WIDGET_STYLE = f"""
 
     /* 悬停状态 */
     QTabBar::tab:hover {{
-        background-color: {THEME["primary_light"]};     /* 悬停颜色 */
+        color: {THEME["primary_light"]};                         /* 文字颜色 */
+        background-color: {THEME["backdrop"]};     /* 悬停颜色 */
     }}
 
     /* 选中标签样式 */
@@ -191,6 +192,7 @@ Q_TAB_WIDGET_STYLE = f"""
         background-color: {THEME["background"]};        /* 与内容区域一致 */
         color: {THEME["text"]};                         /* 文字颜色 */
         border-bottom-color: transparent;               /* 去掉底部边框，避免冲突 */
+        font-weight: bold;                              /* 加粗字体 */
     }}
 
     /* 内容区域样式 */
@@ -217,6 +219,7 @@ PRIMARY_BUTTON_STYLE = f"""
         border: none;
         border-radius: 8px;
         padding: 8px 16px;
+        font-size: 15px;
         font-weight: bold;
         min-height: 20px;
         min-width: 80px;
@@ -246,6 +249,7 @@ SECONDARY_BUTTON_STYLE = f"""
         border: none;
         border-radius: 8px;
         padding: 8px 16px;
+        font-size: 15px;
         font-weight: bold;
         min-height: 20px;
         min-width: 80px;
@@ -270,10 +274,12 @@ SECONDARY_BUTTON_STYLE = f"""
 # ---------------------- 输入框样式 ----------------------
 
 # 带动画的输入框样式
+# config.py
+
 INPUT_STYLE = f"""
-    QLineEdit {{
+    QLineEdit, QSpinBox {{
         border: 2px solid {THEME["border"]};
-        border-radius: 5px;
+        border-radius: 6px;
         padding: 6px 8px;
         background-color: {THEME["card_background"]};
         color: {THEME["text"]};
@@ -282,12 +288,60 @@ INPUT_STYLE = f"""
         transition: border 0.3s ease;
         {FONT_STYLE}
     }}
-    QLineEdit:hover {{
+    QLineEdit:hover, QSpinBox:hover {{
         border: 2px solid {THEME["primary_light"]};
     }}
-    QLineEdit:focus {{
+    QLineEdit:focus, QSpinBox:focus {{
         border: 2px solid {THEME["primary"]};
         background-color: {THEME["background"]};
+    }}
+
+    /* 调整 QSpinBox 上下按钮大小和样式 */
+    QSpinBox::up-button {{
+        background-color: {THEME["card_background"]};
+        border: 1px solid {THEME["border"]};
+        border-top-right-radius: 4px;
+        margin: 1px 0px 1px 1px;
+        width: 20px;  /* 调整宽度 */
+        height: 12px; /* 调整高度 */
+    }}
+    QSpinBox::down-button {{
+        background-color: {THEME["card_background"]};
+        border: 1px solid {THEME["border"]};
+        border-bottom-right-radius: 4px;
+        margin: 1px 0px 1px 1px;
+        width: 20px;
+        height: 12px;
+    }}
+
+    /* 可选：自定义上下箭头图标 */
+    QSpinBox::up-arrow {{
+        image: url(icons/arrow_up_icon.svg); /* 使用自定义图标 */
+        width: 12px;
+        height: 12px;
+        margin: 0px 4px; /* 图标居中 */
+    }}
+    QSpinBox::down-arrow {{
+        image: url(icons/arrow_down_icon.svg);
+        width: 12px;
+        height: 12px;
+        margin: 0px 4px;
+    }}
+
+    /* 可选：悬停和按下时的样式 */
+    QSpinBox::up-button:hover {{
+        background-color: {THEME["primary_light"]};
+        border-color: {THEME["primary"]};
+    }}
+    QSpinBox::down-button:hover {{
+        background-color: {THEME["primary_light"]};
+        border-color: {THEME["primary"]};
+    }}
+    QSpinBox::up-button:pressed {{
+        background-color: {THEME["primary_dark"]};
+    }}
+    QSpinBox::down-button:pressed {{
+        background-color: {THEME["primary_dark"]};
     }}
 """
 
@@ -498,19 +552,29 @@ APP_STYLE = f"""
         color: {THEME["text"]};
         {FONT_STYLE}
     }}
-    
+
+    /* 独立样式保护日志区域 */
+    QTextEdit {{
+        font-family: "Courier New";
+        font-size: 10pt;
+        background-color: {THEME["card_background"]};  # 使用主题背景色
+        selection-background-color: {THEME["primary"]};
+        border: 1px solid {THEME["border"]};
+        border-radius: 6px;
+    }}
+
     /* 确保所有标签默认透明 */
     QLabel {{
         color: {THEME["text"]};
         background-color: transparent !important;
         {FONT_STYLE}
     }}
-    
+
     /* 分隔符样式 */
     QSplitter::handle {{
         background-color: {THEME["border"]};
     }}
-    
+
     /* 工具提示样式 */
     QToolTip {{
         background-color: {THEME["card_background"]};
@@ -520,11 +584,10 @@ APP_STYLE = f"""
         border-radius: 4px;
         {FONT_STYLE}
     }}
-    
+
     /* 包含全局滚动条样式 */
     {SCROLLBAR_STYLE}
 """
-
 
 # ---------------------- 状态动画类 ----------------------
 

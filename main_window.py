@@ -3,6 +3,7 @@
 from PyQt6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout
 
 from ClipboardImageScaler.clipboard_image_scaler_gui import ClipboardImageScalerGUI
+from AutoRename.auto_rename_gui import ImageRenamerGUI
 from config.config import APP_STYLE, Q_TAB_WIDGET_STYLE
 
 class MainWindow(QMainWindow):
@@ -24,6 +25,7 @@ class MainWindow(QMainWindow):
 
         # 添加图像缩放器标签页
         tab_widget.addTab(ClipboardImageScalerGUI(), "图像缩放器")
+        tab_widget.addTab(ImageRenamerGUI(), "图片重命名")
 
         # 布局设置
         layout = QVBoxLayout(main_widget)
