@@ -283,8 +283,8 @@ class ImageRenamer(FileSystemEventHandler):
             self.log_func(f"{format_tag('操作')}将覆盖最后一个文件: {name}_{self.max_images}{ext}")
             self.counter[name] = self.max_images
 
-            # 达到最大图片数量时发送Windows通知
-            # show_windows_notification("图片重命名工具", f"{name} 系列已达到{self.max_images}张图片上限")
+        # 达到最大图片数量时发送Windows通知
+        if self.counter[name] >= self.max_images:
             self.show_notification_func("图片重命名工具", f"{name} 系列已达到{self.max_images}张图片上限")
 
         new_filename = f"{name}_{self.counter[name]}{ext}"
