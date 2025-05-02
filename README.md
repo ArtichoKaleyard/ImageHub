@@ -86,10 +86,8 @@ cd ImageHub
 
 2. 创建并激活虚拟环境（推荐）：
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或
-venv\Scripts\activate  # Windows
+conda env create -f environment.yml
+conda activate your_env_name
 ```
 
 3. 安装依赖：
@@ -169,8 +167,8 @@ ImageHub/
 
 ## 联系方式
 
-- 项目地址：[https://github.com/yourusername/ImageHub](https://github.com/yourusername/ImageHub)
-- 作者邮箱：your.email@example.com
+- 项目地址：[https://github.com/ArtichoKaleyard/ImageHub](https://github.com/ArtichoKaleyard/ImageHub)
+- 作者邮箱：[follower193949@outlook.com](follower193949@outlook.com)
 
 ## 致谢
 
