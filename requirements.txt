@@ -69,3 +69,8 @@ win10toast @ file:///D:/bld/win10toast_1695795157328/work
 win_inet_pton @ file:///D:/bld/win_inet_pton_1733130564612/work
 zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1732827521216/work
 zstandard==0.23.0
+
+pyqt6-sip~=13.10.0
+watchdog~=6.0.0
+numpy~=2.2.5
+pillow~=11.1.0
