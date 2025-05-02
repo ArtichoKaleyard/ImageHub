@@ -89,13 +89,14 @@ def format_tag(tag):
     return f"[{padded_tag}] [{current_time}]"
 
 
-def show_windows_notification(title, message):
+def show_windows_notification(title, message, duration=5):
     """
     显示Windows系统通知
 
     参数:
         title (str): 通知标题
         message (str): 通知内容
+        duration (int): 通知持续时间(秒)
     """
 
     def run_toast_in_subprocess():
@@ -108,6 +109,10 @@ from win10toast import ToastNotifier
 
 title = sys.argv[1]
 message = sys.argv[2]
+try:
+    duration = int(sys.argv[3])
+except IndexError:
+    duration = 5  # 默认值
 
 # 重定向标准输出和错误输出到null设备
 import os
@@ -120,6 +125,7 @@ toaster = ToastNotifier()
 toaster.show_toast(
     title, 
     message,
+    duration=duration,
     threaded=False
 )
             ''')
@@ -166,6 +172,7 @@ class ImageRenamer(FileSystemEventHandler):
         self.processing_files = set()  # 记录正在处理的文件，防止重复处理
         self.last_msg_was_time = False
         self.log_func = log_func or print
+        self.show_notification_func = show_notification_func or (lambda title, msg: None)
         self._init_counter()  # 初始化计数器
 
     def _init_counter(self):
@@ -331,10 +338,6 @@ class Worker(QtCore.QObject):
         self.running = False
         self.observer = None
 
-    def show_notification_in_main_thread(self, title, message):
-        """在主线程中显示通知"""
-        show_windows_notification(title, message)
-
     def start_monitoring(self):
         """开始监控指定文件夹"""
         if not os.path.exists(self.folder_path):
@@ -352,9 +355,9 @@ class Worker(QtCore.QObject):
         self.observer.start()
 
         # 连接信号并显示通知
-        self.worker = Worker(self.folder_path, self.max_images)
-        self.worker.show_notification.connect(self.show_notification_in_main_thread)
-        self.show_notification_in_main_thread("图片重命名工具", "已开始监控文件夹")
+        # self.worker = Worker(self.folder_path, self.max_images)
+        # self.worker.show_notification.connect(self.show_notification_in_main_thread)
+        # self.show_notification_in_main_thread("图片重命名工具", "已开始监控文件夹")
 
         try:
             while self.running:
@@ -476,6 +479,10 @@ class ImageRenamerGUI(QWidget):
         self.setWindowTitle("自动图片重命名工具")
         self.resize(700, 500)
 
+    def show_notification_in_main_thread(self, title, message):
+        """在主线程中显示通知"""
+        show_windows_notification(title, message)
+
     def select_font(self):
         """打开字体选择对话框，允许用户自定义日志字体"""
         current_font = self.log_text.font()
@@ -521,6 +528,7 @@ class ImageRenamerGUI(QWidget):
         self.worker = Worker(folder, max_images)
         self.worker_thread = QtCore.QThread(self)
         self.worker.moveToThread(self.worker_thread)
+        self.worker.show_notification.connect(self.show_notification_in_main_thread)
         self.worker_thread.started.connect(self.worker.start_monitoring)
         self.worker.finished.connect(self.worker.deleteLater)
         self.worker.finished.connect(self.on_monitoring_finished)
