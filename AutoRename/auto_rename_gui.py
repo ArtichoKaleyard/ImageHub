@@ -45,7 +45,7 @@ TAG_COLOR_MAPPING = {
     'INIT': '#5555FF',  # 初始化消息蓝色
     'SKIP': '#FFA500',  # 跳过消息橙色
     'FOUND': '#008000',  # 发现消息绿色
-    'WARN': '#FF0000',  # 警告消息红色
+    'WARN': '#FFA500',  # 警告消息橙色
     'ACTION': '#008000',  # 操作消息绿色
     'ERROR': '#FF0000',  # 错误消息红色
     'RENAME': '#008000',  # 重命名消息绿色
@@ -209,6 +209,14 @@ class ImageRenamer(FileSystemEventHandler):
             # 将文件添加到队列而不是立即处理
             self.file_queue.put(event.src_path)
 
+    def is_file_accessible(self, file_path):
+        """检查文件是否可访问（未被占用）"""
+        try:
+            with open(file_path, 'rb') as f:
+                return True
+        except (IOError, OSError):
+            return False
+
     def _process_queue(self):
         """持续处理队列中的文件"""
         while True:
@@ -252,16 +260,14 @@ class ImageRenamer(FileSystemEventHandler):
         # 获取文件信息
         dirname = os.path.dirname(file_path)
         filename = os.path.basename(file_path)
+        name, ext = os.path.splitext(filename)
 
         # 检查文件名是否已经包含数字后缀
         if re.match(r'.+_\d+\.[^.]+$', filename):
             self.log_func(f"{format_tag('跳过')}文件 {filename} 已包含数字后缀")
             return
 
-        # 获取文件名和扩展名
-        name, ext = os.path.splitext(filename)
-
-        # 更新计数器
+        # 检查新图像文件
         if name not in self.counter:
             self.counter[name] = 0
             self.log_func(f"{format_tag('发现')}检测到新的图像系列: {name}")
@@ -282,39 +288,44 @@ class ImageRenamer(FileSystemEventHandler):
         new_filename = f"{name}_{self.counter[name]}{ext}"
         new_path = os.path.join(dirname, new_filename)
 
-        # 避免重命名冲突（仅在未达到最大限制时检查）
-        if self.counter[name] < self.max_images:
-            while os.path.exists(new_path) and self.counter[name] < self.max_images:
-                self.counter[name] += 1
-                new_filename = f"{name}_{self.counter[name]}{ext}"
-                new_path = os.path.join(dirname, new_filename)
+        # 检查文件是否可访问
+        if not self.is_file_accessible(file_path):
+            self.log_func(f"{format_tag('错误')}源文件被占用，跳过处理: {filename}")
+            return
 
-        try:
-            # 再次确认源文件存在
-            if not os.path.exists(file_path):
-                self.log_func(f"{format_tag('错误')}源文件不存在: {file_path}")
+        # 删除旧文件
+        if os.path.exists(new_path):
+            retry = 3
+            while retry > 0:
+                try:
+                    os.remove(new_path)
+                    self.log_func(f"{format_tag('删除')}已删除现有文件: {new_filename}")
+                    break
+                except (OSError, IOError) as e:
+                    retry -= 1
+                    time.sleep(2)
+            if retry == 0:
+                self.log_func(f"{format_tag('错误')}无法删除目标文件: {new_filename}")
                 return
 
-            # 如果目标文件已存在，先删除它（特别是当达到最大限制时）
-            if os.path.exists(new_path):
-                os.remove(new_path)
-                self.log_func(f"{format_tag('删除')}已删除现有文件: {new_filename}")
-
-            # 重命名文件
-            os.rename(file_path, new_path)
-            self.log_func(
-                f"{format_tag('重命名')}{filename} → {new_filename} ({self.counter[name]}/{self.max_images})")
-
-            # 如果恰好达到最大图片数量，发送通知
-            if self.counter[name] == self.max_images:
-                # show_windows_notification("图片重命名工具", f"{name} 系列已完成{self.max_images}张图片")
-                self.show_notification_func("图片重命名工具", f"{name} 系列已完成{self.max_images}张图片")
-
-        except FileNotFoundError:
-            self.log_func(f"{format_tag('错误')}文件不存在: {file_path}")
-        except Exception as e:
-            self.log_func(f"{format_tag('错误')}重命名文件时出错: {str(e)}")
-
+        # 重命名文件，处理重试逻辑
+        retry = 3
+        while retry > 0:
+            try:
+                os.rename(file_path, new_path)
+                self.log_func(
+                    f"{format_tag('重命名')}{filename} → {new_filename} ({self.counter[name]}/{self.max_images})")
+                break
+            except (OSError, IOError) as e:
+                if e.errno in (errno.EACCES, errno.EBUSY) or (hasattr(e, 'winerror') and e.winerror == 32):
+                    retry -= 1
+                    self.log_func(f"{format_tag('警告')}文件被占用，{2}秒后重试... 剩余尝试次数: {retry}")
+                    time.sleep(2)
+                else:
+                    self.log_func(f"{format_tag('错误')}重命名文件时出错: {str(e)}")
+                    break
+        if retry == 0:
+            self.log_func(f"{format_tag('错误')}多次尝试失败，跳过文件: {filename}")
 
 class Worker(QtCore.QObject):
     """
