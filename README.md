@@ -115,7 +115,8 @@ python main.py
 3. 点击"开始监控"
 4. 复制任意图像到剪贴板
 5. 程序会自动处理并显示结果
-![img.png](img.png)
+
+![image](https://github.com/user-attachments/assets/dda905c9-ae15-479a-b6d6-170436fb5c65)
 
 ### 图片重命名器使用
 
@@ -124,7 +125,9 @@ python main.py
 3. 点击"开始监控"
 4. 将图片保存到监控文件夹
 5. 程序会自动重命名并记录日志
-![img.png](img.png)
+
+![image](https://github.com/user-attachments/assets/f65b0e21-6d0e-458b-9aa4-6c3ed47d3dc8)
+
 
 ## 项目结构
 
