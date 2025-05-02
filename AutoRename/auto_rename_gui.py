@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QSpinBox, QTextEdit, QFileDialog,
     QMessageBox, QStatusBar, QGroupBox, QFontDialog
 )
+from win10toast import ToastNotifier
 from config.config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
     STATUS_BAR_STYLE, THEME
 
@@ -88,14 +89,13 @@ def format_tag(tag):
     return f"[{padded_tag}] [{current_time}]"
 
 
-def show_windows_notification(title, message, duration=5):
+def show_windows_notification(title, message):
     """
     显示Windows系统通知
 
     参数:
         title (str): 通知标题
         message (str): 通知内容
-        duration (int): 通知持续时间(秒)
     """
 
     def run_toast_in_subprocess():
@@ -108,7 +108,6 @@ from win10toast import ToastNotifier
 
 title = sys.argv[1]
 message = sys.argv[2]
-duration = int(sys.argv[3])
 
 # 重定向标准输出和错误输出到null设备
 import os
@@ -121,17 +120,16 @@ toaster = ToastNotifier()
 toaster.show_toast(
     title, 
     message,
-    duration=duration,
     threaded=False
 )
             ''')
 
         # 运行脚本并隐藏输出
-        os.system(f'start /B "" python "{temp_script}" "{title}" "{message}" {duration} >nul 2>&1')
+        os.system(f'start /B "" python "{temp_script}" "{title}" "{message}" >nul 2>&1')
 
         # 等待一段时间后删除临时脚本
         def delete_temp_file():
-            time.sleep(duration + 2)
+            time.sleep(5)
             try:
                 if os.path.exists(temp_script):
                     os.remove(temp_script)
@@ -149,7 +147,7 @@ class ImageRenamer(FileSystemEventHandler):
     图片重命名处理器类，负责监控文件系统事件并重命名新保存的图片
     """
 
-    def __init__(self, watch_folder, max_images=10, log_func=None):
+    def __init__(self, watch_folder, max_images=10, log_func=None, show_notification_func=None):
         """
         初始化图片重命名处理器
 
@@ -157,6 +155,7 @@ class ImageRenamer(FileSystemEventHandler):
             watch_folder (str): 需要监控的文件夹路径
             max_images (int): 每个图像系列的最大图片数量
             log_func (callable): 日志输出函数
+            show_notification_func (callable): 显示通知的函数
         """
         self.watch_folder = watch_folder
         self.max_images = max_images
@@ -270,7 +269,8 @@ class ImageRenamer(FileSystemEventHandler):
             self.counter[name] = self.max_images
 
             # 达到最大图片数量时发送Windows通知
-            show_windows_notification("图片重命名工具", f"{name} 系列已达到{self.max_images}张图片上限")
+            # show_windows_notification("图片重命名工具", f"{name} 系列已达到{self.max_images}张图片上限")
+            self.show_notification_func("图片重命名工具", f"{name} 系列已达到{self.max_images}张图片上限")
 
         new_filename = f"{name}_{self.counter[name]}{ext}"
         new_path = os.path.join(dirname, new_filename)
@@ -300,7 +300,8 @@ class ImageRenamer(FileSystemEventHandler):
 
             # 如果恰好达到最大图片数量，发送通知
             if self.counter[name] == self.max_images:
-                show_windows_notification("图片重命名工具", f"{name} 系列已完成{self.max_images}张图片")
+                # show_windows_notification("图片重命名工具", f"{name} 系列已完成{self.max_images}张图片")
+                self.show_notification_func("图片重命名工具", f"{name} 系列已完成{self.max_images}张图片")
 
         except FileNotFoundError:
             self.log_func(f"{format_tag('错误')}文件不存在: {file_path}")
@@ -314,6 +315,7 @@ class Worker(QtCore.QObject):
     """
     log = pyqtSignal(str)  # 日志信号，用于向UI发送日志
     finished = pyqtSignal()  # 完成信号，用于通知UI任务已完成
+    show_notification = pyqtSignal(str, str)  # 通知信号
 
     def __init__(self, folder_path, max_images):
         """
@@ -329,6 +331,10 @@ class Worker(QtCore.QObject):
         self.running = False
         self.observer = None
 
+    def show_notification_in_main_thread(self, title, message):
+        """在主线程中显示通知"""
+        show_windows_notification(title, message)
+
     def start_monitoring(self):
         """开始监控指定文件夹"""
         if not os.path.exists(self.folder_path):
@@ -340,10 +346,15 @@ class Worker(QtCore.QObject):
         self.log.emit(f"{format_tag('系统')}每个图像系列最多处理: {self.max_images} 张图片")
         self.log.emit(f"{format_tag('提示')}按停止按钮停止监控")
 
-        event_handler = ImageRenamer(self.folder_path, self.max_images, self.log.emit)
+        event_handler = ImageRenamer(self.folder_path, self.max_images, self.log.emit, self.show_notification.emit)
         self.observer = Observer()
         self.observer.schedule(event_handler, self.folder_path, recursive=False)
         self.observer.start()
+
+        # 连接信号并显示通知
+        self.worker = Worker(self.folder_path, self.max_images)
+        self.worker.show_notification.connect(self.show_notification_in_main_thread)
+        self.show_notification_in_main_thread("图片重命名工具", "已开始监控文件夹")
 
         try:
             while self.running:

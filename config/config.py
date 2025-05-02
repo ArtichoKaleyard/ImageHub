@@ -228,7 +228,6 @@ PRIMARY_BUTTON_STYLE = f"""
     }}
     QPushButton:hover {{
         background-color: {THEME["primary_light"]};
-        transition: background-color 0.2s;
     }}
     QPushButton:pressed {{
         background-color: {THEME["primary_dark"]};
@@ -258,7 +257,6 @@ SECONDARY_BUTTON_STYLE = f"""
     }}
     QPushButton:hover {{
         background-color: {THEME["secondary_light"]};
-        transition: background-color 0.2s;
     }}
     QPushButton:pressed {{
         background-color: {THEME["secondary_dark"]};
@@ -273,9 +271,7 @@ SECONDARY_BUTTON_STYLE = f"""
 
 # ---------------------- 输入框样式 ----------------------
 
-# 带动画的输入框样式
-# config.py
-
+# 输入框样式 - 移除了transition属性
 INPUT_STYLE = f"""
     QLineEdit, QSpinBox {{
         border: 2px solid {THEME["border"]};
@@ -285,7 +281,6 @@ INPUT_STYLE = f"""
         color: {THEME["text"]};
         selection-background-color: {THEME["primary_light"]};
         selection-color: white;
-        transition: border 0.3s ease;
         {FONT_STYLE}
     }}
     QLineEdit:hover, QSpinBox:hover {{
@@ -314,7 +309,7 @@ INPUT_STYLE = f"""
         height: 12px;
     }}
 
-    /* 可选：自定义上下箭头图标 */
+    /* 自定义上下箭头图标 */
     QSpinBox::up-arrow {{
         image: url(icons/arrow_up_icon.svg); /* 使用自定义图标 */
         width: 12px;
@@ -328,7 +323,7 @@ INPUT_STYLE = f"""
         margin: 0px 4px;
     }}
 
-    /* 可选：悬停和按下时的样式 */
+    /* 悬停和按下时的样式 */
     QSpinBox::up-button:hover {{
         background-color: {THEME["primary_light"]};
         border-color: {THEME["primary"]};
@@ -376,9 +371,8 @@ GROUP_BOX_STYLE = f"""
     }}
 """
 
-# print({THEME["text"]})
+# 设置箭头图标
 arrow_icon = "icons/chevron_down_light.svg" if DARK_MODE else "icons/chevron_down_dark.svg"
-# print(arrow_icon)
 
 # 下拉菜单样式 - 现代化风格
 COMBO_BOX_STYLE = f"""
@@ -557,7 +551,7 @@ APP_STYLE = f"""
     QTextEdit {{
         font-family: "Courier New";
         font-size: 10pt;
-        background-color: {THEME["card_background"]};  # 使用主题背景色
+        background-color: {THEME["card_background"]};  /* 使用主题背景色 */
         selection-background-color: {THEME["primary"]};
         border: 1px solid {THEME["border"]};
         border-radius: 6px;
@@ -716,9 +710,16 @@ class StatusAnimator:
         self.label.setStyleSheet(gradient_style)
 
 
-# 在config.py中添加辅助函数
 def with_alpha(color_hex, alpha):
-    """将十六进制颜色转换为带透明度的RGBA字符串"""
+    """将十六进制颜色转换为带透明度的RGBA字符串
+
+    Args:
+        color_hex: 十六进制颜色字符串，例如 "#FF0000"
+        alpha: 透明度值 (0.0-1.0)
+
+    Returns:
+        rgba格式的颜色字符串，例如 "rgba(255, 0, 0, 0.5)"
+    """
     if color_hex.startswith("#"):
         color_hex = color_hex.lstrip("#")
         # 假设原颜色为6位，不考虑alpha通道
