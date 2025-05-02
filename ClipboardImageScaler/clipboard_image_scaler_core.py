@@ -5,15 +5,17 @@
 import threading
 import numpy as np
 import cv2
+from PyQt6.QtCore import QObject, pyqtSignal
 from PIL import Image, ImageGrab
 import win32clipboard
 import win32con
 from io import BytesIO
 
 
-class ImageToolBase:
+class ImageToolBase(QObject):
     """图像工具基类"""
     def __init__(self):
+        super().__init__()
         self.running = False
         self.thread = None  # 存储线程对象
 
@@ -41,11 +43,17 @@ class ImageToolBase:
 
 
 class ClipboardImageScalerCore(ImageToolBase):
-    def __init__(self, callback=None):
+    # 定义信号，用于安全地跨线程通信
+    status_signal = pyqtSignal(str)
+    error_signal = pyqtSignal(str)
+    original_image_signal = pyqtSignal(object)
+    original_info_signal = pyqtSignal(str)
+    scaled_image_signal = pyqtSignal(object)
+    scaled_info_signal = pyqtSignal(str)
+
+    def __init__(self):
         """
         初始化粘贴板图像缩放器核心
-        参数:
-        callback -- 用于通知UI更新的回调函数
         """
         super().__init__()
         # 目标尺寸（默认1920x1080）
@@ -60,8 +68,6 @@ class ClipboardImageScalerCore(ImageToolBase):
         self.last_image = None
         self.scaled_image = None
         self.last_clipboard_seq = 0  # 用于检测粘贴板变化的序号
-        # 用于UI更新的回调函数
-        self.callback = callback
 
     def set_target_size(self, width, height):
         """
@@ -80,7 +86,7 @@ class ClipboardImageScalerCore(ImageToolBase):
 
     def set_auto_adjust_larger_size(self, enabled):
         """
-                设置是否自动调整大于目标尺寸的图像
+        设置是否自动调整大于目标尺寸的图像
         """
         self.auto_adjust_larger_size = enabled
         return True
@@ -162,14 +168,12 @@ class ClipboardImageScalerCore(ImageToolBase):
                     self.last_clipboard_seq = current_seq
                     img = ImageGrab.grabclipboard()
                     if isinstance(img, Image.Image):
-                        if self.callback:
-                            self.callback("status", "检测到新图像，正在处理...")
+                        self.status_signal.emit("检测到新图像，正在处理...")
                         self.last_image = self.pil_to_cv2(img)
                         self.process_image()
                         threading.Event().wait(0.1)
             except Exception as e:
-                if self.callback:
-                    self.callback("error", f"粘贴板读取错误: {str(e)}")
+                self.error_signal.emit(f"粘贴板读取错误: {str(e)}")
             threading.Event().wait(0.1)
 
     def pil_to_cv2(self, pil_image):
@@ -217,28 +221,19 @@ class ClipboardImageScalerCore(ImageToolBase):
             return False
 
         height, width = self.last_image.shape[:2]
-        if self.callback:
-            self.callback("original_image", self.last_image)
-            self.callback("original_info", f"{width}x{height}")
+        self.original_image_signal.emit(self.last_image)
+        self.original_info_signal.emit(f"{width}x{height}")
 
         current_target_width = self.target_width
         current_target_height = self.target_height
-
-        # # 添加调试信息
-        # print(f"Original size: {width}x{height}")
-        # print(f"Target size: {self.target_width}x{self.target_height}")
-        # print(f"Auto adjust larger size: {self.auto_adjust_larger_size}")
 
         # 修改：移除 self.target_height == 1080 限制
         if self.auto_adjust_larger_size:
             if height > 1080 or width > 1920:
                 current_target_height = 1440
                 current_target_width = 2560
-                if self.callback:
-                    self.callback("status",
-                                  f"检测到图像尺寸 {width}x{height} > 1080p，调整目标尺寸为 {current_target_width}x{current_target_height}")
-
-        # print(f"Current target size: {current_target_width}x{current_target_height}")
+                self.status_signal.emit(
+                    f"检测到图像尺寸 {width}x{height} > 1080p，调整目标尺寸为 {current_target_width}x{current_target_height}")
 
         current_ratio = width / height
         target_ratio = current_target_width / current_target_height
@@ -254,22 +249,18 @@ class ClipboardImageScalerCore(ImageToolBase):
                 new_height = current_target_height
                 new_width = int(new_height * current_ratio)
 
-            # print(f"New size: {new_width}x{new_height}")
-
             self.scaled_image = cv2.resize(self.last_image, (new_width, new_height), interpolation=self.resize_method)
-            if self.callback:
-                self.callback("scaled_image", self.scaled_image)
-                self.callback("scaled_info", f"{new_width}x{new_height}")
-                self.callback("status",
-                              f"图像已缩放 {width}x{height} -> {new_width}x{new_height} (目标: {current_target_width}x{current_target_height})")
+            self.scaled_image_signal.emit(self.scaled_image)
+            self.scaled_info_signal.emit(f"{new_width}x{new_height}")
+            self.status_signal.emit(
+                f"图像已缩放 {width}x{height} -> {new_width}x{new_height} (目标: {current_target_width}x{current_target_height})")
             if self.auto_copy_back:
                 self.copy_to_clipboard()
             return True
         else:
             self.scaled_image = None
-            if self.callback:
-                self.callback("scaled_image", None)
-                self.callback("scaled_info", "无需缩放")
+            self.scaled_image_signal.emit(None)
+            self.scaled_info_signal.emit("无需缩放")
             return False
 
     def copy_to_clipboard(self):
@@ -295,14 +286,11 @@ class ClipboardImageScalerCore(ImageToolBase):
 
                 # 更新剪贴板序列号以避免重复处理
                 self.last_clipboard_seq = win32clipboard.GetClipboardSequenceNumber()
-                if self.callback:
-                    self.callback("status", "图像已复制到粘贴板")
+                self.status_signal.emit("图像已复制到粘贴板")
                 return True
             except Exception as e:
-                if self.callback:
-                    self.callback("error", f"复制到粘贴板失败: {str(e)}")
+                self.error_signal.emit(f"复制到粘贴板失败: {str(e)}")
                 return False
         else:
-            if self.callback:
-                self.callback("status", "没有可复制的缩放图像")
+            self.status_signal.emit("没有可复制的缩放图像")
             return False

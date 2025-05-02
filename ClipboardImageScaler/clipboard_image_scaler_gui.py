@@ -26,7 +26,10 @@ class ClipboardImageScalerGUI(QWidget):
         self.setStyleSheet(APP_STYLE)
 
         # 初始化核心逻辑类
-        self.core = ClipboardImageScalerCore(callback=self.update_ui)
+        self.core = ClipboardImageScalerCore()
+
+        # 连接信号到槽
+        self.connect_signals()
 
         # 设置是否启用调整功能
         self.adjust_larger_check = None
@@ -57,6 +60,59 @@ class ClipboardImageScalerGUI(QWidget):
 
         # 在所有初始化完成后，强制所有标签背景透明
         self.force_transparent_labels()
+
+    def connect_signals(self):
+        """连接核心类的信号到GUI槽函数"""
+        self.core.status_signal.connect(self.on_status_update)
+        self.core.error_signal.connect(self.on_error)
+        self.core.original_image_signal.connect(self.on_original_image)
+        self.core.original_info_signal.connect(self.on_original_info)
+        self.core.scaled_image_signal.connect(self.on_scaled_image)
+        self.core.scaled_info_signal.connect(self.on_scaled_info)
+
+    # 新添加的槽函数
+    @pyqtSlot(str)
+    def on_status_update(self, message):
+        self.status_label.setText(message)
+
+    @pyqtSlot(str)
+    def on_error(self, error_message):
+        QMessageBox.critical(self, "错误", error_message)
+        self.status_animator.start(f"错误: {error_message}", *STATUS_COLORS["error"])
+
+    @pyqtSlot(object)
+    def on_original_image(self, image):
+        if image is not None:
+            self.last_original_image = image.copy()
+            height, width = image.shape[:2]
+            self.original_dimensions = (width, height)
+            self.original_area = width * height
+            # 重新绘制两张图片，以保证比例关系正确
+            self.redraw_preview_images()
+
+    @pyqtSlot(str)
+    def on_original_info(self, info):
+        self.original_info_label.setText(f"原始尺寸: {info}")
+
+    @pyqtSlot(object)
+    def on_scaled_image(self, image):
+        if image is not None:
+            self.last_scaled_image = image.copy()
+            height, width = image.shape[:2]
+            self.scaled_dimensions = (width, height)
+            self.scaled_area = width * height
+            # 重新绘制两张图片，以保证比例关系正确
+            self.redraw_preview_images()
+            self.copy_btn.setEnabled(True)
+            # 显示成功状态
+            self.status_animator.start("图像已成功调整", *STATUS_COLORS["success"])
+        else:
+            self.scaled_image_label.clear()
+            self.copy_btn.setEnabled(False)
+
+    @pyqtSlot(str)
+    def on_scaled_info(self, info):
+        self.scaled_info_label.setText(f"调整后尺寸: {info}")
 
     def force_transparent_labels(self):
         """确保所有标签背景透明"""
