@@ -1,20 +1,22 @@
-import os
-import sys
-import time
-import re
-import threading
 import datetime
+import errno
+import os
+import re
+import sys
+import threading
+import time
 from queue import Queue
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+
+from PyQt6 import QtCore, QtGui
+from PyQt6.QtCore import pyqtSignal, QTimer
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QSpinBox, QTextEdit, QFileDialog,
     QMessageBox, QStatusBar, QGroupBox, QFontDialog
 )
-from win10toast import ToastNotifier
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
 from config.config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
     STATUS_BAR_STYLE, THEME
 
