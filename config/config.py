@@ -689,15 +689,20 @@ class StatusAnimator:
         color1, color2 = self.current_colors
         pos = self.animation_pos / 1000.0  # 转换为0-1范围
 
-        # 创建流动渐变效果
+        # 确保所有 stop 位置在 0.0 到 1.0 之间
+        stop0 = max(0.0, pos - 0.1)
+        stop1 = max(0.0, pos - 0.015)
+        stop2 = min(1.0, pos + 0.011)
+
+        # 构建渐变样式
         gradient_style = f"""
             background: qlineargradient(
                 x1:0, y1:0, x2:1, y2:0,
                 stop:0 {color1},
-                stop:{pos-0.1} {color1},
-                stop:{pos-0.015} {color2},
+                stop:{stop0} {color1},
+                stop:{stop1} {color2},
                 stop:{pos} {color2},
-                stop:{pos+0.011} {color1},
+                stop:{stop2} {color1},
                 stop:1 {color1}
             );
             color: white;
