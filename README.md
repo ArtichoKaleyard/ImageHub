@@ -20,6 +20,14 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 - Windows 系统通知集成
 - 防重复处理机制
 
+### 3. 图像处理验证器
+- 批量验证图像处理结果
+- 支持多种命名规则验证
+- 自动检测处理完整性
+- 多线程并行处理
+- 详细的验证报告
+- JSON配置支持
+
 ## 技术特性
 
 - 现代化UI设计
@@ -29,6 +37,7 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 - 实时状态反馈
 - 自定义字体支持
 - 错误处理与提示
+- JSON配置管理
 
 ### 主要组件说明：
 
@@ -43,11 +52,14 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 3. **配置模块**
    - config.py: 包含主题设置、样式定义和动画配置
 
-4. **资源目录**
-   - icons: 存放UI所需的图标资源
+4. **图像处理验证器模块**
+   - image_verifier_gui.py: 验证器GUI实现
+   - image_verifier_adapter.py: 验证器中间层实现
+   - image_verifier_core.py: 验证器核心实现
+   - help.html: 配置说明文档
 
-5. **IDE配置**
-   - .idea: PyCharm IDE的项目配置文件
+5. **资源目录**
+   - icons: 存放UI所需的图标资源
 
 ### 功能模块划分：
 
@@ -55,25 +67,28 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
    - 图像处理和缩放
    - 剪贴板操作
    - 配置管理
+   - 图像验证
 
 2. **界面层**
    - 主窗口框架
    - 图像缩放器界面
    - 状态动画效果
+   - 验证器界面
 
 3. **配置层**
    - 主题配置
    - 样式定义
    - 动画参数
+   - JSON配置
 
 ## 环境要求
 
-- Python 3.8+
-- PyQt6
+- Python 3.12+
+- PyQt6 6.9.0+
 - OpenCV (cv2)
-- Numpy
+- Numpy 2.2+
 - Win32clipboard (Windows平台)
-- Watchdog (文件监控)
+- Watchdog 6.0+
 - Pillow (PIL)
 
 ## 安装说明
@@ -126,6 +141,15 @@ python main.py
 
 ![image](https://github.com/user-attachments/assets/f65b0e21-6d0e-458b-9aa4-6c3ed47d3dc8)
 
+### 图像处理验证器使用
+
+1. 配置 config/IPV_config.json
+2. 选择验证模式：
+   - range: 固定范围序号
+   - numeric: 任意数字序号
+   - custom: 自定义正则匹配
+3. 点击"开始验证"
+4. 查看验证报告和日志
 
 ## 项目结构
 
@@ -134,14 +158,22 @@ ImageHub/
 ├── main.py                 # 主程序入口
 ├── main_window.py          # 主窗口实现
 ├── config/
-│   └── config.py          # 配置和样式定义
+│   ├── style_config.py    # 样式配置
+│   ├── style_interface.py # 样式接口
+│   └── IPV_config.json    # 验证器配置
 │
 ├── ClipboardImageScaler/   # 图像缩放器模块
-│   ├── clipboard_image_scaler_core.py
-│   └── clipboard_image_scaler_gui.py
+│   ├── clipboard_image_scaler_gui.py # 图像缩放器GUI
+│   └── clipboard_image_scaler_core.py  # 图像缩放器核心
 │
 ├── AutoRename/            # 图片重命名模块
-│   └── auto_rename_gui.py
+│   └── auto_rename_gui.py # 图片重命名模块
+│
+├── ImageProcessingValidator/ # 图像处理验证器
+│   ├── image_verifier_gui.py # 图形界面层
+│   ├── image_verifier_adapter.py # 适配器层（GUI/CLI双模式）
+│   ├── image_verifier_core.py # 核心验证逻辑
+│   └── help.html            # 可交互式帮助文档
 │
 └── icons/                 # 图标资源目录
 ```
