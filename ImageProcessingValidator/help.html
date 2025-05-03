@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>JSON 配置说明</title>
+  <style>
+    /* 默认浅色主题 */
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      padding: 20px;
+      background-color: #fff;
+      color: #333;
+    }
+
+    h2, h3 {
+      color: #333;
+    }
+
+    code {
+      background-color: #f0f0f0;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    /* 深色主题样式 */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #121212;
+        color: #e0e0e0;
+      }
+
+      h2, h3 {
+        color: #ccc;
+      }
+
+      code {
+        background-color: #2a2a2a;
+        color: #f8f8f2;
+      }
+
+      pre {
+        background-color: #2a2a2a;
+        color: #f8f8f2;
+        border-radius: 6px;
+        padding: 10px;
+      }
+
+      table {
+        border: 1px solid #333;
+      }
+
+      th, td {
+        border-color: #333;
+        background-color: #1e1e1e;
+        color: #e0e0e0;
+      }
+
+      th {
+        background-color: #2a2a2a;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h2>JSON 配置说明</h2>
+<p>本界面通过 <code>config.json</code> 配置文件控制验证逻辑，支持以下三种模式：</p>
+
+<!-- 配置模式说明 -->
+<h3>1. 配置模式</h3>
+<ul>
+  <li><code>range_config</code> - 检查固定范围的数字后缀（如 1-10）</li>
+  <li><code>numeric_config</code> - 检查任意数字后缀（可控制位数）</li>
+  <li><code>custom_config</code> - 使用自定义正则表达式匹配文件名</li>
+</ul>
+
+<!-- 公共字段说明 -->
+<h3>2. 公共字段</h3>
+<table>
+  <tr><th>字段</th><th>说明</th><th>示例</th></tr>
+  <tr><td><code>source_folder</code></td><td>原始图片所在目录</td><td><code>"D:\\Images\\raw"</code></td></tr>
+  <tr><td><code>target_folder</code></td><td>处理后图片所在目录</td><td><code>"D:\\Images\\processed"</code></td></tr>
+  <tr><td><code>missing_folder</code></td><td>未处理图片输出目录</td><td><code>"D:\\Images\\missing"</code></td></tr>
+  <tr><td><code>suffix_delimiter</code></td><td>文件名与后缀的分隔符</td><td><code>"_"</code></td></tr>
+  <tr><td><code>expected_extension</code></td><td>处理后图片扩展名</td><td><code>".png"</code></td></tr>
+  <tr><td><code>source_extensions</code></td><td>原始图片支持的扩展名列表</td><td><code>[".jpg", ".jpeg", ".png"]</code></td></tr>
+  <tr><td><code>verify_naming</code></td><td>是否验证命名格式</td><td><code>true</code></td></tr>
+  <tr><td><code>verify_completeness</code></td><td>是否验证处理完整性</td><td><code>true</code></td></tr>
+  <tr><td><code>max_workers</code></td><td>最大并行线程数（<code>null</code> 表示自动）</td><td><code>8</code></td></tr>
+</table>
+
+<!-- 模式字段说明 -->
+<h3>3. 模式专用字段</h3>
+<ul>
+  <li><b>range_config</b>
+    <ul>
+      <li><code>suffix_type</code>: <code>"range"</code>（固定值）</li>
+      <li><code>suffix_range</code>: 后缀数字范围（闭区间）<code>[1, 10]</code></li>
+    </ul>
+  </li>
+
+  <li><b>numeric_config</b>
+    <ul>
+      <li><code>suffix_type</code>: <code>"numeric"</code>（固定值）</li>
+      <li><code>min_digits</code>: 最小后缀位数</li>
+      <li><code>max_digits</code>: 最大后缀位数（<code>null</code> 表示无上限）</li>
+      <li><code>expected_count_per_image</code>: 每个基础图片应生成的变体数（可选）</li>
+    </ul>
+  </li>
+
+  <li><b>custom_config</b>
+    <ul>
+      <li><code>suffix_type</code>: <code>"custom"</code>（固定值）</li>
+      <li><code>custom_pattern</code>: 自定义正则表达式（必须包含命名组）</li>
+    </ul>
+  </li>
+</ul>
+
+<!-- 正则表达式说明 -->
+<h3>4. 自定义模式 - 正则表达式要求</h3>
+<p>自定义模式必须包含以下两个命名组：</p>
+<ul>
+  <li><code>(?P&lt;base_name&gt;...)</code> - 匹配基础文件名部分</li>
+  <li><code>(?P&lt;suffix&gt;...)</code> - 匹配后缀部分（必须为数字）</li>
+</ul>
+<p>示例：</p>
+<pre>
+^(?P&lt;base_name&gt;.+)_(?P&lt;suffix&gt;\d+)\.png$
+</pre>
+<p>注意：正则表达式中的反斜杠 <code>\</code> 需要转义为 <code>\\</code>（JSON 文件中）</p>
+
+<!-- 完整JSON示例 -->
+<h3>5. 完整 JSON 示例</h3>
+<pre>
+{
+  "range_config": {
+    "source_folder": "D:\\raw",
+    "target_folder": "D:\\processed",
+    "missing_folder": "D:\\missing",
+    "suffix_type": "range",
+    "suffix_range": [1, 10],
+    "suffix_delimiter": "_",
+    "expected_extension": ".png",
+    "source_extensions": [".jpg", ".jpeg", ".png"],
+    "verify_naming": true,
+    "verify_completeness": true,
+    "max_workers": 8
+  },
+  "numeric_config": {
+    "source_folder": "D:\\raw",
+    "target_folder": "D:\\processed",
+    "missing_folder": "D:\\missing",
+    "suffix_type": "numeric",
+    "min_digits": 1,
+    "max_digits": null,
+    "expected_count_per_image": 5,
+    "suffix_delimiter": "_",
+    "expected_extension": ".png",
+    "source_extensions": [".jpg", ".jpeg", ".png"],
+    "verify_naming": true,
+    "verify_completeness": true,
+    "max_workers": null
+  },
+  "custom_config": {
+    "source_folder": "D:\\raw",
+    "target_folder": "D:\\processed",
+    "missing_folder": "D:\\missing",
+    "suffix_type": "custom",
+    "custom_pattern": "^(?P&lt;base_name&gt;.+)_(?P&lt;suffix&gt;\\d+)\\.png$",
+    "suffix_delimiter": "_",
+    "expected_extension": ".png",
+    "source_extensions": [".jpg", ".jpeg", ".png"],
+    "verify_naming": true,
+    "verify_completeness": true,
+    "max_workers": 4
+  }
+}
+</pre>
+
+<!-- 常见问题 -->
+<h3>6. 常见问题</h3>
+<ul>
+  <li><b>路径问题</b>：确保路径中的反斜杠 <code>\</code> 在 JSON 中为 <code>\\</code>。</li>
+  <li><b>正则表达式错误</b>：确保正则表达式语法正确，并包含 <code>base_name</code> 和 <code>suffix</code> 命名组。</li>
+  <li><b>配置未生效</b>：修改 <code>config.json</code> 后需重启程序。</li>
+</ul>
+
+</body>
+</html>

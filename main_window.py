@@ -4,13 +4,15 @@ from PyQt6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout
 
 from ClipboardImageScaler.clipboard_image_scaler_gui import ClipboardImageScalerGUI
 from AutoRename.auto_rename_gui import ImageRenamerGUI
-from config.config import APP_STYLE, Q_TAB_WIDGET_STYLE
+from ImageProcessingValidator.verify_image_gui import ImageVerifierGUI
+from config.style_config import APP_STYLE, Q_TAB_WIDGET_STYLE
+from config.style_interface import get_style
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("图像处理工具集")
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(200, 200, get_style('WINDOW_WIDTH'), get_style('WINDOW_HEIGHT'))   #ignore
         self.setStyleSheet(APP_STYLE)
 
         # 主容器
@@ -24,8 +26,9 @@ class MainWindow(QMainWindow):
         tab_widget.setTabsClosable(False)             # 禁用关闭按钮
 
         # 添加图像缩放器标签页
-        tab_widget.addTab(ClipboardImageScalerGUI(), "图像缩放器")
-        tab_widget.addTab(ImageRenamerGUI(), "图片重命名")
+        tab_widget.addTab(ClipboardImageScalerGUI(), "图像缩放工具")
+        tab_widget.addTab(ImageRenamerGUI(), "图片重命名工具")
+        tab_widget.addTab(ImageVerifierGUI(), "图片验证工具")
 
         # 布局设置
         layout = QVBoxLayout(main_widget)

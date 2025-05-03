@@ -1,0 +1,59 @@
+{
+  "range_config": {
+    "source_folder": "D:\\Proselyte\\下载\\腾讯QQ\\yang (1)",
+    "target_folder": "D:\\Proselyte\\图片\\Photoshop\\数据集\\违章建筑\\samples",
+    "missing_folder": "D:\\Proselyte\\图片\\Photoshop\\数据集\\违章建筑\\missing",
+    "suffix_type": "range",
+    "suffix_delimiter": "_",
+    "expected_extension": ".png",
+    "source_extensions": [
+      ".jpg",
+      ".jpeg",
+      ".png"
+    ],
+    "verify_naming": true,
+    "verify_completeness": true,
+    "max_workers": 8,
+    "suffix_range": [
+      1,
+      10
+    ],
+    "min_digits": 1
+  },
+  "numeric_config": {
+    "source_folder": "D:\\Proselyte\\下载\\腾讯QQ\\yang (1)",
+    "target_folder": "D:\\Proselyte\\图片\\Photoshop\\数据集\\违章建筑\\samples",
+    "missing_folder": "D:\\Proselyte\\图片\\Photoshop\\数据集\\违章建筑\\missing",
+    "suffix_type": "numeric",
+    "min_digits": 1,
+    "max_digits": 2,
+    "expected_count_per_image": 10,
+    "suffix_delimiter": "_",
+    "expected_extension": ".png",
+    "source_extensions": [
+      ".jpg",
+      ".jpeg",
+      ".png"
+    ],
+    "verify_naming": true,
+    "verify_completeness": true,
+    "max_workers": null
+  },
+  "custom_config": {
+    "source_folder": "D:\\Proselyte\\下载\\腾讯QQ\\yang (1)",
+    "target_folder": "D:\\Proselyte\\图片\\Photoshop\\数据集\\违章建筑\\samples",
+    "missing_folder": "D:\\Proselyte\\图片\\Photoshop\\数据集\\违章建筑\\missing",
+    "suffix_type": "custom",
+    "custom_pattern": "^(?P<base_name>.+)_(?P<suffix>\\d+)\\.png$",
+    "suffix_delimiter": "_",
+    "expected_extension": ".png",
+    "source_extensions": [
+      ".jpg",
+      ".jpeg",
+      ".png"
+    ],
+    "verify_naming": true,
+    "verify_completeness": true,
+    "max_workers": null
+  }
+}
