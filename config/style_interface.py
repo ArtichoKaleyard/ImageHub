@@ -18,7 +18,7 @@
     status_animator = StatusAnimator(status_label)
     status_animator.start("保存成功!", get_theme('success'))
 """
-import style_config.config as config
+import config.style_config as config
 
 
 def get_style(style_name: str) -> str:
