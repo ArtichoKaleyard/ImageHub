@@ -9,10 +9,10 @@ import cv2
 import numpy as np
 
 from ClipboardImageScaler.clipboard_image_scaler_core import ClipboardImageScalerCore
-from config.config import (THEME, APP_STYLE, ANIMATION_SPEED, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE,
-                           INPUT_STYLE, GROUP_BOX_STYLE, COMBO_BOX_STYLE, CHECK_BOX_STYLE,
-                           STATUS_BAR_STYLE, IMAGE_LABEL_STYLE, INFO_LABEL_STYLE, LABEL_STYLE,
-                           STATUS_FRAME_STYLE, StatusAnimator, STATUS_COLORS)
+from config.style_config import (THEME, APP_STYLE, ANIMATION_SPEED, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE,
+                                 INPUT_STYLE, GROUP_BOX_STYLE, COMBO_BOX_STYLE, CHECK_BOX_STYLE,
+                                 STATUS_BAR_STYLE, IMAGE_LABEL_STYLE, INFO_LABEL_STYLE, LABEL_STYLE,
+                                 STATUS_FRAME_STYLE, StatusAnimator, STATUS_COLORS)
 
 
 class ClipboardImageScalerGUI(QWidget):

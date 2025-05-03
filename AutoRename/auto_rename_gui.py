@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from config.config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
+from config.style_config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
     STATUS_BAR_STYLE, THEME
 
 """
@@ -609,7 +609,7 @@ class ImageRenamerGUI(QWidget):
             message (str): 日志消息
         """
         # 修改解析方式，适应当前格式
-        tag_match = re.match(r'\[([^]]+)\] \[([^]]+)\](.+)', message)
+        tag_match = re.match(r'\[([^]]+)] \[([^]]+)](.+)', message)
 
         if tag_match:
             tag_raw = tag_match.group(1)  # 提取原始标签（包含空格）
