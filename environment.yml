@@ -128,9 +128,13 @@ dependencies:
   - zstandard=0.23.0=py312h4389bb4_2
   - zstd=1.5.7=hbeecb71_2
   - pip:
+      - mypy==1.15.0
+      - mypy-extensions==1.1.0
       - opencv-python==4.11.0.86
       - pyqt5==5.15.11
       - pyqt6==6.9.0
       - pyqt6-qt6==6.9.0
       - pyqt6-sip==13.10.0
+      - pyqt6-webengine==6.9.0
+      - pyqt6-webengine-qt6==6.9.0
 prefix: E:\Anaconda\envs\ImageHub

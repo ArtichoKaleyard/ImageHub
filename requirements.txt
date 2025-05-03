@@ -31,6 +31,8 @@ jaraco.functools @ file:///home/conda/feedstock_root/build_artifacts/jaraco.func
 keyring @ file:///D:/bld/keyring_1735210213173/work
 more-itertools @ file:///home/conda/feedstock_root/build_artifacts/more-itertools_1745349462661/work
 msgpack @ file:///D:/bld/msgpack-python_1725975148340/work
+mypy==1.15.0
+mypy_extensions==1.1.0
 numpy @ file:///D:/bld/numpy_1745118902482/work/dist/numpy-2.2.5-cp312-cp312-win_amd64.whl#sha256=82e4ad1a45d8557a380c5006e82239b4cfb1edeaacb199a0d399d3c4cb189ada
 opencv-python==4.11.0.86
 packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1745345660/work
@@ -45,6 +47,8 @@ pyperclip @ file:///D:/bld/pyperclip_1733932668714/work
 pyproject_hooks @ file:///home/conda/feedstock_root/build_artifacts/pyproject_hooks_1733710025763/work
 PyQt6==6.9.0
 PyQt6-Qt6==6.9.0
+PyQt6-WebEngine==6.9.0
+PyQt6-WebEngine-Qt6==6.9.0
 PyQt6_sip==13.10.0
 PySocks @ file:///D:/bld/pysocks_1733217287171/work
 pywin32==307
@@ -69,8 +73,3 @@ win10toast @ file:///D:/bld/win10toast_1695795157328/work
 win_inet_pton @ file:///D:/bld/win_inet_pton_1733130564612/work
 zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1732827521216/work
 zstandard==0.23.0
-
-pyqt6-sip~=13.10.0
-watchdog~=6.0.0
-numpy~=2.2.5
-pillow~=11.1.0
