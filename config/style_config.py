@@ -725,15 +725,18 @@ def with_alpha(color_hex, alpha):
     Returns:
         rgba格式的颜色字符串，例如 "rgba(255, 0, 0, 0.5)"
     """
-    if color_hex.startswith("#"):
-        color_hex = color_hex.lstrip("#")
-        # 假设原颜色为6位，不考虑alpha通道
-        r = int(color_hex[0:2], 16)
-        g = int(color_hex[2:4], 16)
-        b = int(color_hex[4:6], 16)
-        return f"rgba({r}, {g}, {b}, {alpha})"
-    else:
-        return color_hex  # 非十六进制颜色保持不变（如预定义的rgba）
+    try:
+        if color_hex.startswith("#"):
+            color_hex = color_hex.lstrip("#")
+            # 假设原颜色为6位，不考虑alpha通道
+            r = int(color_hex[0:2], 16)
+            g = int(color_hex[2:4], 16)
+            b = int(color_hex[4:6], 16)
+            return f"rgba({r}, {g}, {b}, {alpha})"
+        else:
+            return color_hex  # 非十六进制颜色保持不变（如预定义的rgba）
+    except:
+        return color_hex
 
 # 状态消息配色方案（带60%透明度）
 STATUS_COLORS = {
