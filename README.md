@@ -151,6 +151,8 @@ python main.py
 3. 点击"开始验证"
 4. 查看验证报告和日志
 
+![image](https://github.com/user-attachments/assets/923b70dc-1d09-432a-88e8-127f286ada65)
+
 ## 项目结构
 
 ```
