@@ -1,5 +1,6 @@
 # main_window.py
 
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout
 
 from ClipboardImageScaler.clipboard_image_scaler_gui import ClipboardImageScalerGUI
@@ -11,9 +12,12 @@ from config.style_interface import get_style
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("图像处理工具集")
+        self.setWindowTitle("图像处理妙妙工具集")
         self.setGeometry(200, 200, get_style('WINDOW_WIDTH'), get_style('WINDOW_HEIGHT'))   #ignore
         self.setStyleSheet(APP_STYLE)
+
+        # 设置窗口图标（路径根据你的实际情况调整）
+        self.setWindowIcon(QIcon("icons/app_icon.png"))  # 如果图标是.ico，可以替换为 icons/app_icon.ico
 
         # 主容器
         main_widget = QWidget()
