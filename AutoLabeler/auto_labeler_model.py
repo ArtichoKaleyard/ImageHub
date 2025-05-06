@@ -87,7 +87,7 @@ class AutoLabelerModel(QObject):
 
     def _setup_logger(self):
         """设置日志记录器"""
-        # 获取已存在的日志记录器
+        # 获取或配置日志记录器
         self.logger = logging.getLogger("AutoLabeler")
         self.logger.setLevel(logging.DEBUG)
 

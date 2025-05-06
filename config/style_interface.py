@@ -158,3 +158,53 @@ LOG_COLORS = config.LOG_COLORS
 
 # 日志标签样式
 LOG_TAG_STYLE = config.LOG_TAG_STYLE
+
+# 日志HTML模板
+LOG_HTML_TEMPLATE = config.LOG_HTML_TEMPLATE
+
+def format_log_html(timestamp: str, message: str, level: str = "info") -> str:
+    """
+    格式化日志消息为HTML
+    
+    Args:
+        timestamp: 时间戳字符串
+        message: 日志消息内容
+        level: 日志级别 ("success", "warning", "error", "info", "normal")
+    
+    Returns:
+        格式化后的HTML字符串
+    """
+    # 获取标签映射和颜色
+    TAG_MAPPING = {
+        'success': 'SUCCESS',
+        'warning': 'WARN',
+        'error': 'ERROR',
+        'info': 'INFO',
+        'normal': 'STATUS'
+    }
+    
+    # 转换标签
+    level_upper = TAG_MAPPING.get(level, 'INFO')
+    
+    # 处理标签内容
+    TAG_WIDTH = 9
+    if len(level_upper) > TAG_WIDTH - 2:
+        tag = f"[{level_upper[:TAG_WIDTH-2]}]"
+    else:
+        total_spaces = TAG_WIDTH - len(level_upper) - 2
+        left_spaces = total_spaces // 2
+        right_spaces = total_spaces - left_spaces
+        tag = f"[{' ' * left_spaces}{level_upper}{' ' * right_spaces}]"
+    
+    # 获取颜色
+    tag_color = LOG_COLORS.get(level, LOG_COLORS["info"])
+    
+    return LOG_HTML_TEMPLATE.format(
+        text_color=LOG_COLORS["text"],
+        timestamp_color=LOG_COLORS["timestamp"],
+        tag_color=tag_color,
+        tag_style='; '.join(LOG_TAG_STYLE.values()),
+        tag=tag,
+        timestamp=timestamp,
+        message=message
+    )

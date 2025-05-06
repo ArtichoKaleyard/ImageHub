@@ -432,53 +432,9 @@ class AutoLabelerView(QWidget):
         """添加日志到日志区域"""
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         
-        # 通过样式接口获取颜色
-        from config.style_interface import LOG_COLORS
-        
-        # 定义标签映射和颜色
-        TAG_MAPPING = {
-            'success': 'SUCCESS',
-            'warning': 'WARN',
-            'error': 'ERROR',
-            'info': 'INFO',
-            'normal': 'STATUS'
-        }
-        
-        TAG_COLOR_MAPPING = {
-            'SUCCESS': LOG_COLORS["success"],
-            'WARN': LOG_COLORS["warning"],
-            'ERROR': LOG_COLORS["error"],
-            'INFO': LOG_COLORS["info"],
-            'STATUS': LOG_COLORS["text_secondary"]
-        }
-        
-        # 固定标签宽度为9个字符（包括方括号）
-        TAG_WIDTH = 9
-        
-        # 转换标签
-        level_upper = TAG_MAPPING.get(level, 'INFO')
-        
-        # 处理标签内容
-        if len(level_upper) > TAG_WIDTH - 2:  # 减去方括号的2字符
-            padded_tag = f"[{level_upper[:TAG_WIDTH-2]}]"
-        else:
-            # 计算左右空格数
-            total_spaces = TAG_WIDTH - len(level_upper) - 2  # 减去方括号的2字符
-            left_spaces = total_spaces // 2
-            right_spaces = total_spaces - left_spaces
-            padded_tag = f"[{' ' * left_spaces}{level_upper}{' ' * right_spaces}]"
-        
-        # 获取标签颜色
-        tag_color = TAG_COLOR_MAPPING.get(level_upper, LOG_COLORS["info"])
-        
-        # 构建HTML格式的日志
-        log_html = (
-            f"<div style='font-family: \"Courier New\", monospace; color:{LOG_COLORS['text']}; white-space: pre-wrap;'>"    #使用 white-space: pre-wrap 样式防止HTML 默认合并空格
-            f"<span style='color:{LOG_COLORS['timestamp']}'>[{timestamp}]</span>"
-            f"<span style='color:{tag_color}'>{padded_tag}</span>"
-            f"{message}"
-            f"</div>"
-        )
+        # 使用样式接口格式化日志
+        from config.style_interface import format_log_html
+        log_html = format_log_html(timestamp, message, level)
 
         self.log_text.append(log_html)
         self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())

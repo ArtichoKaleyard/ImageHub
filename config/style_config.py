@@ -621,18 +621,28 @@ LOG_COLORS = {
     "debug": THEME["text_light"],
     "timestamp": THEME["text_secondary"],
     "text": THEME["text"],
-    "text_secondary": THEME["text_secondary"]  # 确保text_secondary存在
+    "text_secondary": THEME["text_secondary"]
 }
 
 # 日志标签样式
 LOG_TAG_STYLE = {
     "font": "font-family: 'Courier New', monospace; font-size: 9pt;",
-    "padding": "padding: 1px 0px;",  # 移除水平内边距，由固定宽度控制
+    "padding": "padding: 1px 0px;",
     "border_radius": "border-radius: 3px;",
     "margin": "margin: 0 4px;",
     "align": "text-align: center;",
-    "width": "width: 70px; display: inline-block;"  # 固定宽度确保严格等宽
+    "width": "width: 72px; display: inline-block;",  # 调整为固定宽度
+    "white-space": "white-space: pre;"  # 新增，保留空格
 }
+
+# 日志HTML格式模板
+LOG_HTML_TEMPLATE = """
+<div style='font-family: "Courier New", monospace; color:{text_color}; white-space: pre-wrap;'>\
+<span style='color:{timestamp_color}'>[{timestamp}]</span>\
+<span style='color:{tag_color}; {tag_style}'>{tag}</span>\
+{message}\
+</div>
+"""
 
 # ---------------------- 状态动画类 ----------------------
 
