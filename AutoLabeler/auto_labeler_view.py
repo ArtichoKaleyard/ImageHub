@@ -8,15 +8,20 @@ auto_labeler_view.py
 该模块负责标注辅助工具的界面展示
 """
 
+import sys
 import time
+import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton,
-    QComboBox, QSpinBox, QFrame, QLineEdit, QTextEdit
+    QComboBox, QSpinBox, QFrame, QLineEdit, QTextEdit, QApplication
 )
-from PyQt6.QtCore import pyqtSignal, QTimer
+from PyQt6.QtCore import pyqtSignal, QTimer, Qt
 
 # 导入其他模块
 from AutoLabeler.auto_labeler_model import AutoLabelerModel, AutoLabelerMode, AutoLabelerState
+
+# 导入新的日志记录器
+from Logger.logger import Logger
 
 # 导入样式接口
 try:
@@ -34,7 +39,8 @@ except ImportError:
             'SECONDARY_BUTTON_STYLE': "QPushButton { background-color: #f1f1f1; border: 1px solid #ddd; border-radius: 4px; padding: 5px; }",
             'COMBO_BOX_STYLE': "QComboBox { border: 1px solid #ddd; border-radius: 3px; padding: 2px; }",
             'CHECK_BOX_STYLE': "QCheckBox { color: #333; }",
-            'INPUT_STYLE': "QSpinBox { border: 1px solid #ddd; border-radius: 3px; padding: 2px; }",
+            'INPUT_STYLE': "QSpinBox, QLineEdit { border: 1px solid #ddd; border-radius: 3px; padding: 2px; }",
+            'LOG_AREA_STYLE': "QTextEdit { border: 1px solid #ddd; border-radius: 3px; }",
         }
         return styles.get(style_name, "")
 
@@ -88,16 +94,11 @@ class AutoLabelerView(QWidget):
         self.setWindowTitle("自动标注辅助工具")
         self.resize(500, 350)
 
-        # 创建日志记录器
-        self.logger = logging.getLogger("AutoLabeler")
-        self.logger.setLevel(logging.INFO)
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
-            self.logger.addHandler(handler)
-            self.logger.propagate = False
+        # 创建新的日志记录器
+        self.logger = Logger(log_to_console=True, log_to_gui=True)
+
+        # 兼容旧代码的 logger 接口
+        self._setup_legacy_logger()
 
         # 创建模型实例
         self.model = AutoLabelerModel()
@@ -113,6 +114,48 @@ class AutoLabelerView(QWidget):
         self.stats_timer = QTimer()
         self.stats_timer.timeout.connect(self._refresh_stats)
         self.stats_timer.start(1000)  # 每秒更新一次
+
+        # 日志记录启动信息
+        self.logger.info("自动标注辅助工具已启动")
+
+    def _setup_legacy_logger(self):
+        """设置兼容旧代码的logger接口"""
+        # 创建标准Python logger，并将其输出重定向到我们的Logger
+        legacy_logger = logging.getLogger("AutoLabeler")
+        legacy_logger.setLevel(logging.INFO)
+
+        # 移除所有旧的处理器
+        for handler in legacy_logger.handlers[:]:
+            legacy_logger.removeHandler(handler)
+
+        # 添加自定义处理器，将日志转发到我们的Logger
+        class LoggerAdapter(logging.Handler):
+            def __init__(self, custom_logger):
+                super().__init__()
+                self.custom_logger = custom_logger
+
+            def emit(self, record):
+                log_level = record.levelname.lower()
+                if log_level == 'critical':
+                    log_level = 'error'
+                elif log_level == 'warning':
+                    log_level = 'warning'
+                elif log_level == 'info':
+                    log_level = 'info'
+                elif log_level == 'debug':
+                    log_level = 'debug'
+                else:
+                    log_level = 'info'
+
+                # 调用对应的日志方法
+                log_method = getattr(self.custom_logger, log_level, self.custom_logger.info)
+                log_method(self.format(record))
+
+        # 添加适配器
+        handler = LoggerAdapter(self.logger)
+        handler.setFormatter(logging.Formatter('%(message)s'))  # 简化格式，因为我们的Logger会添加时间戳
+        legacy_logger.addHandler(handler)
+        legacy_logger.propagate = False
 
     def _init_ui(self):
         """初始化界面"""
@@ -298,6 +341,9 @@ class AutoLabelerView(QWidget):
         self.log_text.setStyleSheet(get_style('LOG_AREA_STYLE'))
         log_layout.addWidget(self.log_text)
 
+        # 设置Logger的GUI日志控件
+        self.logger.set_gui_log_widget(self.log_text)
+
         # 添加到主布局
         main_layout.addWidget(log_group, 2)
 
@@ -362,15 +408,18 @@ class AutoLabelerView(QWidget):
             self._setup_controller()
 
         self.start_signal.emit()
+        self.logger.success("开始监控")
 
     def _on_pause_clicked(self):
         """暂停按钮点击处理"""
         if self.pause_button.text() == "暂停":
             self.pause_button.setText("继续")
             self.pause_signal.emit()
+            self.logger.info("监控已暂停")
         else:
             self.pause_button.setText("暂停")
             self.start_signal.emit()
+            self.logger.info("监控已继续")
 
     def _on_stop_clicked(self):
         """停止按钮点击处理"""
@@ -379,6 +428,7 @@ class AutoLabelerView(QWidget):
         self.pause_button.setText("暂停")
         self.stop_button.setEnabled(False)
         self.stop_signal.emit()
+        self.logger.info("监控已停止")
 
     def update_state(self, state):
         """更新界面状态"""
@@ -423,19 +473,17 @@ class AutoLabelerView(QWidget):
         # 启动状态动画
         self.status_animator.start(message, color)
 
-        # 记录日志
-        self._append_log(message, status_type)
-
-    def _append_log(self, message, level="info"):
-        """添加日志到日志区域"""
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        
-        # 使用样式接口格式化日志
-        from style.style_interface import format_log_html
-        log_html = format_log_html(timestamp, message, level)
-
-        self.log_text.append(log_html)
-        self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
+        # 根据状态类型记录对应级别的日志
+        if status_type == "success":
+            self.logger.success(message)
+        elif status_type == "warning":
+            self.logger.warning(message)
+        elif status_type == "error":
+            self.logger.error(message)
+        elif status_type == "info" or status_type == "normal":
+            self.logger.info(message)
+        else:
+            self.logger.info(message)
 
     def update_statistics(self, stats):
         """更新统计信息"""
@@ -483,6 +531,7 @@ class AutoLabelerView(QWidget):
             if hasattr(self.controller, 'event_filter'):
                 self.controller.event_filter.stop()
 
+        self.logger.info("应用程序已关闭")
         event.accept()
 
     def initialize(self):
@@ -490,206 +539,6 @@ class AutoLabelerView(QWidget):
         if not hasattr(self, 'controller'):
             self._setup_controller()
         return self.controller
-
-
-# auto_labeler_controller.py 修改版
-# !/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-auto_labeler_controller.py
-自动标注辅助工具 - 控制器层
-
-该模块负责连接模型和视图，处理用户交互和事件
-"""
-
-import sys
-import logging
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QObject, QEvent, Qt, pyqtSignal, QPointF
-from PyQt6.QtGui import QKeyEvent, QMouseEvent
-
-# 导入第三方键盘控制库
-try:
-    from pynput.keyboard import Key, Controller as KeyboardController
-except ImportError:
-    logging.warning("未找到pynput库，将使用模拟键盘事件代替")
-    KeyboardController = None
-
-
-class EventFilter(QObject):
-    """全局事件过滤器，通过pynput监听全局鼠标和键盘事件"""
-    mouse_press_signal = pyqtSignal(QMouseEvent)
-    mouse_release_signal = pyqtSignal(QMouseEvent)
-    key_press_signal = pyqtSignal(QKeyEvent)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._mouse_listener = None
-        self._keyboard_listener = None
-        self._init_global_listeners()
-
-    def _init_global_listeners(self):
-        """初始化全局监听器"""
-        try:
-            from pynput import mouse, keyboard
-        except ImportError:
-            logging.error("缺少pynput库，无法启用全局监听")
-            return
-
-        # 启动鼠标监听
-        self._mouse_listener = mouse.Listener(on_click=self._handle_mouse_click)
-        self._mouse_listener.start()
-
-        # 启动键盘监听
-        self._keyboard_listener = keyboard.Listener(on_press=self._handle_key_press)
-        self._keyboard_listener.start()
-
-    def _handle_mouse_click(self, x, y, button, pressed):
-        """处理全局鼠标点击事件"""
-        # 将pynput按钮转换为Qt按钮
-        qt_button = self._map_pynput_button(button)
-        if qt_button is None:
-            return
-
-        # 构建虚拟的QMouseEvent（坐标可能需要调整）
-        event = QMouseEvent(
-            QEvent.Type.MouseButtonPress if pressed else QEvent.Type.MouseButtonRelease,
-            QPointF(x, y),  # 屏幕坐标
-            qt_button,
-            qt_button,  # 假设没有其他组合按键
-            Qt.KeyboardModifier.NoModifier
-        )
-
-        # 发射信号（使用队列连接确保线程安全）
-        if pressed:
-            self.mouse_press_signal.emit(event)
-        else:
-            self.mouse_release_signal.emit(event)
-
-    def _handle_key_press(self, key):
-        """处理全局键盘按键事件"""
-        try:
-            # 尝试获取字符（普通键）
-            char = key.char
-        except AttributeError:
-            # 处理特殊键（如方向键）
-            char = str(key).split('.')[-1].lower()
-
-        # 构建虚拟的QKeyEvent
-        if char:
-            qt_key = self._map_pynput_key(char)
-            if qt_key:
-                event = QKeyEvent(
-                    QEvent.Type.KeyPress,
-                    qt_key,
-                    Qt.KeyboardModifier.NoModifier,
-                    char
-                )
-                self.key_press_signal.emit(event)
-
-    def _map_pynput_button(self, button):
-        """映射pynput按钮到Qt按钮"""
-        from pynput.mouse import Button
-        return {
-            Button.left: Qt.MouseButton.LeftButton,
-            Button.right: Qt.MouseButton.RightButton,
-            Button.middle: Qt.MouseButton.MiddleButton
-        }.get(button)
-
-    def _map_pynput_key(self, key):
-        """映射pynput按键到Qt按键"""
-        key_map = {
-            'w': Qt.Key.Key_W,
-            'd': Qt.Key.Key_D,
-            'space': Qt.Key.Key_Space,
-            'enter': Qt.Key.Key_Return,
-            # 添加其他需要监听的按键
-        }
-        return key_map.get(key.lower())
-
-    def stop(self):
-        """停止监听器"""
-        if self._mouse_listener:
-            self._mouse_listener.stop()
-        if self._keyboard_listener:
-            self._keyboard_listener.stop()
-
-
-class AutoLabelerController:
-    """自动标注控制器类"""
-
-    def __init__(self, application=None, parent_window=None, model=None, view=None):
-        """
-        初始化控制器
-
-        Args:
-            application: QApplication实例，用于全局事件过滤
-            parent_window: 父窗口，用于设置事件过滤器
-            model: 自动标注模型实例
-            view: 自动标注视图实例
-        """
-        # 获取或配置日志记录器
-        self.logger = logging.getLogger("AutoLabeler")
-
-        # 连接模型和视图
-        self.model = model
-        self.view = view
-
-        # 初始化全局事件过滤器
-        self.event_filter = EventFilter()
-
-        # 确保跨线程信号安全
-        self.event_filter.mouse_press_signal.connect(
-            self.model.handle_mouse_press,
-            Qt.ConnectionType.QueuedConnection
-        )
-        self.event_filter.mouse_release_signal.connect(
-            self.model.handle_mouse_release,
-            Qt.ConnectionType.QueuedConnection
-        )
-        self.event_filter.key_press_signal.connect(
-            self.model.handle_key_press,
-            Qt.ConnectionType.QueuedConnection
-        )
-
-        # 初始化键盘控制器
-        self.keyboard = KeyboardController() if KeyboardController else None
-        if not self.keyboard:
-            self.model.logger.warning("键盘模拟功能受限，请安装pynput库获得完整功能")
-            self.view.update_status("键盘模拟功能受限，请安装pynput库", "warning")
-
-        # 连接信号与槽
-        self._setup_connections()
-
-        self.logger.info("自动标注控制器初始化完成")
-
-    def _setup_connections(self):
-        """设置信号与槽的连接"""
-        # 键盘命令连接
-        self.model.send_key_signal.connect(self._send_key_event)
-
-    def _send_key_event(self, key):
-        """
-        发送键盘事件
-
-        Args:
-            key: 按键字符，如'W'、'D'等
-        """
-        self.logger.debug(f"发送键盘事件: {key}")
-
-        if self.keyboard:
-            # 使用pynput发送真实键盘事件
-            self.keyboard.press(key.lower())
-            self.keyboard.release(key.lower())
-        else:
-            # 模拟QKeyEvent事件
-            key_code = getattr(Qt.Key, f"Key_{key}")
-            key_event = QKeyEvent(QEvent.Type.KeyPress, key_code, Qt.KeyboardModifier.NoModifier)
-            QApplication.sendEvent(self.view, key_event)
-
-            # 模拟按键释放
-            release_event = QKeyEvent(QEvent.Type.KeyRelease, key_code, Qt.KeyboardModifier.NoModifier)
-            QApplication.sendEvent(self.view, release_event)
 
 
 # 主窗口和入口函数
