@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout
 from ClipboardImageScaler.clipboard_image_scaler_gui import ClipboardImageScalerGUI
 from AutoRename.auto_rename_gui import ImageRenamerGUI
 from ImageProcessingValidator.verify_image_gui import ImageVerifierGUI
+from AutoLabeler.auto_labeler_view import AutoLabelerView
 from config.style_config import APP_STYLE, Q_TAB_WIDGET_STYLE
 from config.style_interface import get_style
 
@@ -33,6 +34,7 @@ class MainWindow(QMainWindow):
         tab_widget.addTab(ClipboardImageScalerGUI(), "图像缩放工具")
         tab_widget.addTab(ImageRenamerGUI(), "图片重命名工具")
         tab_widget.addTab(ImageVerifierGUI(), "图片验证工具")
+        tab_widget.addTab(AutoLabelerView(), "标注加速工具")
 
         # 布局设置
         layout = QVBoxLayout(main_widget)
