@@ -21,7 +21,7 @@
 import config.style_config as config
 
 
-def get_style(style_name: str) -> str:
+def get_style(style_name: str) -> str | int:
     """
     获取指定名称的样式
 
