@@ -92,7 +92,7 @@ class AutoLabelerView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("自动标注辅助工具")
-        self.resize(500, 350)
+        self.resize(650, 500)  # 调整窗口大小以适应新布局
 
         # 创建新的日志记录器
         self.logger = Logger(log_to_console=True, log_to_gui=True)
@@ -107,7 +107,7 @@ class AutoLabelerView(QWidget):
         self._init_ui()
         self._setup_connections()
 
-        # 状态动画器
+        # 状态动画器 - 使用白底黑字样式确保状态文本可见
         self.status_animator = StatusAnimator(self.status_label)
 
         # 统计更新定时器
@@ -164,45 +164,53 @@ class AutoLabelerView(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
 
-        # ===== 控制面板 =====
-        control_group = QGroupBox("控制面板")
-        control_group.setStyleSheet(get_style('GROUP_BOX_STYLE'))
-        control_layout = QVBoxLayout(control_group)
+        # ===== 操作控制面板 =====
+        operation_control_group = QGroupBox("操作控制")
+        operation_control_group.setStyleSheet(get_style('GROUP_BOX_STYLE'))
+        operation_layout = QHBoxLayout(operation_control_group)
 
-        # 状态指示器
+        # 状态指示器 - 左侧占一半
         status_frame = QFrame()
         status_frame.setStyleSheet(get_style('STATUS_FRAME_STYLE'))
         status_layout = QHBoxLayout(status_frame)
+        status_layout.setContentsMargins(5, 5, 5, 5)
 
         self.status_label = QLabel("就绪")
         self.status_label.setStyleSheet(get_style('LABEL_STYLE'))
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         status_layout.addWidget(self.status_label)
 
-        # 按钮行
+        # 按钮面板 - 右侧占一半
         button_layout = QHBoxLayout()
 
         self.start_button = QPushButton("开始监控")
         self.start_button.setStyleSheet(get_style('PRIMARY_BUTTON_STYLE'))
-        self.start_button.setMinimumWidth(100)
 
         self.pause_button = QPushButton("暂停")
         self.pause_button.setStyleSheet(get_style('SECONDARY_BUTTON_STYLE'))
-        self.pause_button.setMinimumWidth(80)
         self.pause_button.setEnabled(False)
 
         self.stop_button = QPushButton("停止")
         self.stop_button.setStyleSheet(get_style('SECONDARY_BUTTON_STYLE'))
-        self.stop_button.setMinimumWidth(80)
         self.stop_button.setEnabled(False)
 
         button_layout.addWidget(self.start_button)
         button_layout.addWidget(self.pause_button)
         button_layout.addWidget(self.stop_button)
 
-        # 模式选择
-        mode_layout = QHBoxLayout()
+        operation_layout.addWidget(status_frame, 1)  # 状态栏占一半
+        operation_layout.addLayout(button_layout, 1)  # 按钮占一半
 
+        # ===== 中间部分：控制面板和统计信息水平排布 =====
+        middle_layout = QHBoxLayout()
+
+        # ===== 控制面板 - 左侧 =====
+        control_group = QGroupBox("控制面板")
+        control_group.setStyleSheet(get_style('GROUP_BOX_STYLE'))
+        control_layout = QVBoxLayout(control_group)
+
+        # 模式选择 - 独占一行
+        mode_layout = QHBoxLayout()
         mode_label = QLabel("操作模式:")
         mode_label.setStyleSheet(get_style('LABEL_STYLE'))
 
@@ -213,9 +221,8 @@ class AutoLabelerView(QWidget):
 
         mode_layout.addWidget(mode_label)
         mode_layout.addWidget(self.mode_combo)
-        mode_layout.addStretch(1)
 
-        # 延迟设置
+        # 延迟设置 - 两两一行
         delay_layout = QHBoxLayout()
 
         draw_delay_label = QLabel("绘制延迟:")
@@ -242,9 +249,8 @@ class AutoLabelerView(QWidget):
         delay_layout.addWidget(self.draw_delay_spin)
         delay_layout.addWidget(next_delay_label)
         delay_layout.addWidget(self.next_delay_spin)
-        delay_layout.addStretch(1)
 
-        # 快捷键设置
+        # 快捷键设置 - 两两一行
         shortcut_layout = QHBoxLayout()
 
         draw_shortcut_label = QLabel("绘制快捷键:")
@@ -265,16 +271,14 @@ class AutoLabelerView(QWidget):
         shortcut_layout.addWidget(self.draw_shortcut_edit)
         shortcut_layout.addWidget(next_shortcut_label)
         shortcut_layout.addWidget(self.next_shortcut_edit)
-        shortcut_layout.addStretch(1)
 
         # 添加到控制面板
-        control_layout.addWidget(status_frame)
-        control_layout.addLayout(button_layout)
         control_layout.addLayout(mode_layout)
         control_layout.addLayout(delay_layout)
         control_layout.addLayout(shortcut_layout)
+        control_layout.addStretch(1)  # 填充剩余空间
 
-        # ===== 统计信息 =====
+        # ===== 统计信息 - 右侧 =====
         stats_group = QGroupBox("统计信息")
         stats_group.setStyleSheet(get_style('GROUP_BOX_STYLE'))
         stats_layout = QVBoxLayout(stats_group)
@@ -288,13 +292,17 @@ class AutoLabelerView(QWidget):
         self.image_count_label = QLabel("本次已处理: 0 张图片")
         self.image_count_label.setStyleSheet(get_style('LABEL_STYLE'))
 
+        session_layout.addWidget(self.box_count_label)
+        session_layout.addWidget(self.image_count_label)
+
+        # 时长单独一行
+        duration_layout = QHBoxLayout()
+
         self.duration_label = QLabel("用时: 00:00:00")
         self.duration_label.setStyleSheet(get_style('LABEL_STYLE'))
 
-        session_layout.addWidget(self.box_count_label)
-        session_layout.addWidget(self.image_count_label)
-        session_layout.addWidget(self.duration_label)
-        session_layout.addStretch(1)
+        duration_layout.addWidget(self.duration_label)
+        duration_layout.addStretch(1)
 
         # 效率统计
         efficiency_layout = QHBoxLayout()
@@ -307,7 +315,6 @@ class AutoLabelerView(QWidget):
 
         efficiency_layout.addWidget(self.box_rate_label)
         efficiency_layout.addWidget(self.image_rate_label)
-        efficiency_layout.addStretch(1)
 
         # 总计统计
         total_layout = QHBoxLayout()
@@ -320,18 +327,19 @@ class AutoLabelerView(QWidget):
 
         total_layout.addWidget(self.total_box_label)
         total_layout.addWidget(self.total_image_label)
-        total_layout.addStretch(1)
 
         # 添加到统计面板
         stats_layout.addLayout(session_layout)
+        stats_layout.addLayout(duration_layout)
         stats_layout.addLayout(efficiency_layout)
         stats_layout.addLayout(total_layout)
+        stats_layout.addStretch(1)  # 填充剩余空间
 
-        # 添加到主布局
-        main_layout.addWidget(control_group, 3)
-        main_layout.addWidget(stats_group, 2)
+        # 将控制面板和统计信息添加到中间布局
+        middle_layout.addWidget(control_group, 1)  # 各占一半
+        middle_layout.addWidget(stats_group, 1)
 
-        # 日志展示区域
+        # 日志展示区域 - 底部，至少占据三分之一的空间
         log_group = QGroupBox("日志")
         log_group.setStyleSheet(get_style('GROUP_BOX_STYLE'))
         log_layout = QVBoxLayout(log_group)
@@ -345,7 +353,9 @@ class AutoLabelerView(QWidget):
         self.logger.set_gui_log_widget(self.log_text)
 
         # 添加到主布局
-        main_layout.addWidget(log_group, 2)
+        main_layout.addWidget(operation_control_group)
+        main_layout.addLayout(middle_layout, 2)  # 中间部分占2份
+        main_layout.addWidget(log_group, 3)  # 日志区域占3份，确保至少三分之一
 
         self.setLayout(main_layout)
 
