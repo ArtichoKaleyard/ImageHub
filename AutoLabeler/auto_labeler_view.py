@@ -10,9 +10,10 @@ auto_labeler_view.py
 
 import sys
 import logging
+import time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton,
-    QSlider, QComboBox, QSpinBox, QCheckBox, QSizePolicy, QFrame, QApplication
+    QSlider, QComboBox, QSpinBox, QCheckBox, QSizePolicy, QFrame, QApplication, QLineEdit, QTextEdit
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer
 from PyQt6.QtGui import QIcon, QFont
@@ -22,7 +23,7 @@ from AutoLabeler.auto_labeler_model import AutoLabelerModel, AutoLabelerMode, Au
 
 # 导入样式接口
 try:
-    from config.style_interface import get_style, get_theme, StatusAnimator
+    from config.style_interface import get_style, get_theme, StatusAnimator, LOG_COLORS, LOG_TAG_STYLE
 except ImportError:
     # 默认样式函数，当无法导入时使用
     def get_style(style_name):
@@ -169,12 +170,8 @@ class AutoLabelerView(QWidget):
         self.mode_combo.addItem("仅自动绘制 (W)")
         self.mode_combo.addItem("绘制并下一张 (W+D)")
 
-        self.auto_next_check = QCheckBox("单独绘制后自动下一张")
-        self.auto_next_check.setStyleSheet(get_style('CHECK_BOX_STYLE'))
-
         mode_layout.addWidget(mode_label)
         mode_layout.addWidget(self.mode_combo)
-        mode_layout.addWidget(self.auto_next_check)
         mode_layout.addStretch(1)
 
         # 延迟设置
@@ -206,11 +203,35 @@ class AutoLabelerView(QWidget):
         delay_layout.addWidget(self.next_delay_spin)
         delay_layout.addStretch(1)
 
+        # 快捷键设置
+        shortcut_layout = QHBoxLayout()
+
+        draw_shortcut_label = QLabel("绘制快捷键:")
+        draw_shortcut_label.setStyleSheet(get_style('LABEL_STYLE'))
+
+        self.draw_shortcut_edit = QLineEdit("W")
+        self.draw_shortcut_edit.setStyleSheet(get_style('INPUT_STYLE'))
+        self.draw_shortcut_edit.setMaxLength(1)
+
+        next_shortcut_label = QLabel("下一张快捷键:")
+        next_shortcut_label.setStyleSheet(get_style('LABEL_STYLE'))
+
+        self.next_shortcut_edit = QLineEdit("D")
+        self.next_shortcut_edit.setStyleSheet(get_style('INPUT_STYLE'))
+        self.next_shortcut_edit.setMaxLength(1)
+
+        shortcut_layout.addWidget(draw_shortcut_label)
+        shortcut_layout.addWidget(self.draw_shortcut_edit)
+        shortcut_layout.addWidget(next_shortcut_label)
+        shortcut_layout.addWidget(self.next_shortcut_edit)
+        shortcut_layout.addStretch(1)
+
         # 添加到控制面板
         control_layout.addWidget(status_frame)
         control_layout.addLayout(button_layout)
         control_layout.addLayout(mode_layout)
         control_layout.addLayout(delay_layout)
+        control_layout.addLayout(shortcut_layout)
 
         # ===== 统计信息 =====
         stats_group = QGroupBox("统计信息")
@@ -269,6 +290,19 @@ class AutoLabelerView(QWidget):
         main_layout.addWidget(control_group, 3)
         main_layout.addWidget(stats_group, 2)
 
+        # 日志展示区域
+        log_group = QGroupBox("日志")
+        log_group.setStyleSheet(get_style('GROUP_BOX_STYLE'))
+        log_layout = QVBoxLayout(log_group)
+
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet(get_style('LOG_AREA_STYLE'))
+        log_layout.addWidget(self.log_text)
+
+        # 添加到主布局
+        main_layout.addWidget(log_group, 2)
+
         self.setLayout(main_layout)
 
     def _setup_controller(self):
@@ -296,7 +330,6 @@ class AutoLabelerView(QWidget):
         self.pause_button.clicked.connect(self._on_pause_clicked)
         self.stop_button.clicked.connect(self._on_stop_clicked)
         self.mode_combo.currentIndexChanged.connect(self.mode_changed_signal.emit)
-        self.auto_next_check.toggled.connect(self.auto_next_changed_signal.emit)
         self.draw_delay_spin.valueChanged.connect(self.delay_draw_changed_signal.emit)
         self.next_delay_spin.valueChanged.connect(self.delay_next_changed_signal.emit)
 
@@ -310,7 +343,6 @@ class AutoLabelerView(QWidget):
         self.pause_signal.connect(self.model.pause_monitoring)
         self.stop_signal.connect(self.model.stop_monitoring)
         self.mode_changed_signal.connect(self._on_mode_changed)
-        self.auto_next_changed_signal.connect(self.model.set_auto_next)
         self.delay_draw_changed_signal.connect(self.model.set_delay_draw)
         self.delay_next_changed_signal.connect(self.model.set_delay_next)
 
@@ -392,6 +424,64 @@ class AutoLabelerView(QWidget):
 
         # 启动状态动画
         self.status_animator.start(message, color)
+
+        # 记录日志
+        self._append_log(message, status_type)
+
+    def _append_log(self, message, level="info"):
+        """添加日志到日志区域"""
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        
+        # 通过样式接口获取颜色
+        from config.style_interface import LOG_COLORS
+        
+        # 定义标签映射和颜色
+        TAG_MAPPING = {
+            'success': 'SUCCESS',
+            'warning': 'WARN',
+            'error': 'ERROR',
+            'info': 'INFO',
+            'normal': 'STATUS'
+        }
+        
+        TAG_COLOR_MAPPING = {
+            'SUCCESS': LOG_COLORS["success"],
+            'WARN': LOG_COLORS["warning"],
+            'ERROR': LOG_COLORS["error"],
+            'INFO': LOG_COLORS["info"],
+            'STATUS': LOG_COLORS["text_secondary"]
+        }
+        
+        # 固定标签宽度为9个字符（包括方括号）
+        TAG_WIDTH = 9
+        
+        # 转换标签
+        level_upper = TAG_MAPPING.get(level, 'INFO')
+        
+        # 处理标签内容
+        if len(level_upper) > TAG_WIDTH - 2:  # 减去方括号的2字符
+            padded_tag = f"[{level_upper[:TAG_WIDTH-2]}]"
+        else:
+            # 计算左右空格数
+            total_spaces = TAG_WIDTH - len(level_upper) - 2  # 减去方括号的2字符
+            left_spaces = total_spaces // 2
+            right_spaces = total_spaces - left_spaces
+            padded_tag = f"[{' ' * left_spaces}{level_upper}{' ' * right_spaces}]"
+        
+        # 获取标签颜色
+        tag_color = TAG_COLOR_MAPPING.get(level_upper, LOG_COLORS["info"])
+        
+        # 构建HTML格式的日志
+        log_html = (
+            f"<div style='font-family: \"Courier New\", monospace; color:{LOG_COLORS['text']}; white-space: pre-wrap;'>"    #使用 white-space: pre-wrap 样式防止HTML 默认合并空格
+            f"<span style='color:{LOG_COLORS['timestamp']}'>[{timestamp}]</span>"
+            f"<span style='color:{tag_color}'>{padded_tag}</span>"
+            f"{message}"
+            f"</div>"
+        )
+
+        self.log_text.append(log_html)
+        self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
 
     def update_statistics(self, stats):
         """更新统计信息"""

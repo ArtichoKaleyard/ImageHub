@@ -149,3 +149,12 @@ STATUS_COLORS = {
     "error": config.STATUS_COLORS["error"],
     "warning": config.STATUS_COLORS["warning"]
 }
+
+# 日志区域样式
+LOG_AREA_STYLE = config.LOG_AREA_STYLE
+
+# 日志颜色方案
+LOG_COLORS = config.LOG_COLORS
+
+# 日志标签样式
+LOG_TAG_STYLE = config.LOG_TAG_STYLE

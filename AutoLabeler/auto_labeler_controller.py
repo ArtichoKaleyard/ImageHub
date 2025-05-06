@@ -135,7 +135,7 @@ class EventFilter(QObject):
 class AutoLabelerController:
     """自动标注控制器类"""
 
-    def __init__(self, model, view, application=None, parent_window=None):
+    def __init__(self, model=None, view=None, application=None, parent_window=None):
         """
         初始化控制器
 
@@ -152,6 +152,10 @@ class AutoLabelerController:
         self.view = view
         self.app = application or QApplication.instance()
         self.parent_window = parent_window
+
+        # 快捷键设置
+        self.draw_shortcut = "W"
+        self.next_shortcut = "D"
 
         # 标记控制器是否已初始化完成
         self._initialized = False
@@ -232,6 +236,12 @@ class AutoLabelerController:
         """清理资源"""
         if self.event_filter:
             self.event_filter.stop()
+
+    def set_shortcuts(self, draw_shortcut, next_shortcut):
+        """设置快捷键"""
+        self.draw_shortcut = draw_shortcut.upper()
+        self.next_shortcut = next_shortcut.upper()
+        self.logger.info(f"设置快捷键 - 绘制: {self.draw_shortcut}, 下一张: {self.next_shortcut}")
 
 
 class AutoLabelerWidget(QObject):

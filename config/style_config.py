@@ -583,6 +583,57 @@ APP_STYLE = f"""
     {SCROLLBAR_STYLE}
 """
 
+# 日志区域样式
+LOG_AREA_STYLE = f"""
+    QTextEdit {{
+        background-color: {THEME["card_background"]};
+        color: {THEME["text"]};
+        border: 1px solid {THEME["border"]};
+        border-radius: 6px;
+        padding: 5px;
+        font-family: "Consolas", "Courier New", monospace;
+        font-size: 10pt;
+    }}
+    
+    QScrollBar:vertical {{
+        background: transparent;
+        width: 8px;
+        margin: 0px;
+    }}
+    
+    QScrollBar::handle:vertical {{
+        background: {THEME["primary_light"]};
+        min-height: 20px;
+        border-radius: 4px;
+    }}
+    
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+        background: transparent;
+    }}
+"""
+
+# 日志消息颜色定义
+LOG_COLORS = {
+    "success": THEME["success"],
+    "warning": THEME["warning"],
+    "error": THEME["error"],
+    "info": THEME["info"],
+    "debug": THEME["text_light"],
+    "timestamp": THEME["text_secondary"],
+    "text": THEME["text"],
+    "text_secondary": THEME["text_secondary"]  # 确保text_secondary存在
+}
+
+# 日志标签样式
+LOG_TAG_STYLE = {
+    "font": "font-family: 'Courier New', monospace; font-size: 9pt;",
+    "padding": "padding: 1px 0px;",  # 移除水平内边距，由固定宽度控制
+    "border_radius": "border-radius: 3px;",
+    "margin": "margin: 0 4px;",
+    "align": "text-align: center;",
+    "width": "width: 70px; display: inline-block;"  # 固定宽度确保严格等宽
+}
+
 # ---------------------- 状态动画类 ----------------------
 
 class StatusAnimator:

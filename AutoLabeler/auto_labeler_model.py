@@ -46,7 +46,6 @@ class AutoLabelerModel(QObject):
         # 状态与配置
         self._state = AutoLabelerState.IDLE
         self._mode = AutoLabelerMode.DRAW_ONLY
-        self._auto_next = False
         self._delay_draw = 300  # 绘制后等待时间(毫秒)
         self._delay_next = 500  # 下一张等待时间(毫秒)
 
@@ -111,11 +110,6 @@ class AutoLabelerModel(QObject):
     def mode(self):
         """获取当前模式"""
         return self._mode
-
-    @property
-    def auto_next(self):
-        """获取是否自动下一张"""
-        return self._auto_next
 
     @property
     def delay_draw(self):
@@ -228,13 +222,6 @@ class AutoLabelerModel(QObject):
             self.logger.info(f"设置标注模式: {mode_str}")
             self.status_changed.emit(f"标注模式: {mode_str}", "info")
 
-    def set_auto_next(self, enabled):
-        """设置是否自动下一张"""
-        self._auto_next = enabled
-        action = "启用" if enabled else "禁用"
-        self.logger.info(f"{action}自动下一张")
-        self.status_changed.emit(f"自动下一张: {action}", "info")
-
     def set_delay_draw(self, ms):
         """设置绘制延迟时间"""
         self._delay_draw = max(100, min(2000, ms))
@@ -307,7 +294,7 @@ class AutoLabelerModel(QObject):
             self.send_key_signal.emit("W")
 
             # 如果是绘制并下一张模式，则启动下一张定时器
-            if self._mode == AutoLabelerMode.DRAW_AND_NEXT or self._auto_next:
+            if self._mode == AutoLabelerMode.DRAW_AND_NEXT:
                 self._auto_next_timer.start(self._delay_next)
 
             self._draw_detected = False
