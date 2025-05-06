@@ -1,15 +1,17 @@
 """
-样式接口模块，提供统一的样式与主题访问方法。
-具体实现位于 style_config.py，本模块仅用于暴露接口。
+增强版样式接口模块，提供统一的样式、主题与日志样式访问方法。
+整合了style_config.py和log_style.py的功能，作为统一入口点。
 
 使用方法:
-    from modern_style_declarations import get_style, get_theme, StatusAnimator
+    from style.style_interface import (
+        # 基础样式接口
+        get_style, get_theme, StatusAnimator, is_dark_mode,
+        # 日志样式接口
+        get_log_style, format_log_html, format_console_log, set_log_theme, sync_log_theme
+    )
 
     # 获取应用程序主样式
     app.setStyleSheet(get_style('APP_STYLE'))
-
-    # 获取按钮样式
-    my_button.setStyleSheet(get_style('PRIMARY_BUTTON_STYLE'))
 
     # 获取当前使用的主题颜色
     primary_color = get_theme('primary')
@@ -17,11 +19,38 @@
     # 创建状态栏动画
     status_animator = StatusAnimator(status_label)
     status_animator.start("保存成功!", get_theme('success'))
+
+    # 设置日志主题（会自动与应用主题同步，但可以单独设置）
+    set_log_theme("dark")  # 或 "light", "auto"
+
+    # 同步日志主题与应用主题
+    sync_log_theme()
+
+    # 获取日志区域样式
+    log_text_edit.setStyleSheet(get_log_style("LOG_AREA_STYLE"))
+
+    # 格式化日志
+    html_log = format_log_html("14:30:22", "图像已成功保存", "success")
+    log_text_edit.append(html_log)
+
+    console_log = format_console_log("14:30:22", "图像已成功保存", "success")
+    print(console_log)
 """
-import config.style_config as config
+import style.style_config as config
+from style.log_style import (
+    # 日志格式化函数
+    format_log_html, format_console_log, log,
+    # 日志主题管理
+    set_theme as _set_log_theme,
+    sync_from_app_theme as _sync_log_theme,
+    # 日志样式
+    LOG_AREA_STYLE, LOG_COLORS,
+    # 控制台颜色
+    ConsoleColors
+)
 
 
-def get_style(style_name: str) -> str | int:
+def get_style(style_name: str) -> str:
     """
     获取指定名称的样式
 
@@ -46,11 +75,33 @@ def get_style(style_name: str) -> str | int:
         - LABEL_STYLE: 标准标签样式
         - SCROLLBAR_STYLE: 滚动条样式
         - Q_TAB_WIDGET_STYLE: 标签页样式
+        - LOG_AREA_STYLE: 日志区域样式
     """
+    # 特殊处理日志区域样式
+    if style_name == 'LOG_AREA_STYLE':
+        return LOG_AREA_STYLE
+
     if hasattr(config, style_name):
         return getattr(config, style_name)
     else:
         raise ValueError(f"样式 '{style_name}' 不存在")
+
+
+def get_log_style(style_name: str) -> str:
+    """
+    获取日志相关的样式
+
+    Args:
+        style_name: 样式名称(字符串)
+            - LOG_AREA_STYLE: 日志区域样式
+
+    Returns:
+        字符串形式的样式定义
+    """
+    if style_name == 'LOG_AREA_STYLE':
+        return LOG_AREA_STYLE
+    else:
+        raise ValueError(f"日志样式 '{style_name}' 不存在")
 
 
 def get_theme(color_name: str) -> str:
@@ -92,7 +143,33 @@ def get_theme(color_name: str) -> str:
         raise ValueError(f"颜色 '{color_name}' 不存在")
 
 
-def is_dark_mode():
+def get_log_theme(color_name: str) -> str:
+    """
+    获取当前日志主题中的颜色
+
+    Args:
+        color_name: 颜色名称(字符串)
+            - success: 成功状态色
+            - warning: 警告状态色
+            - error: 错误状态色
+            - info: 信息状态色
+            - debug: 调试状态色
+            - timestamp: 时间戳色
+            - text: 文本色
+            - text_secondary: 次要文本色
+            - background: 背景色
+            - border: 边框色
+
+    Returns:
+        颜色值，如 "#00C853"
+    """
+    if color_name in LOG_COLORS:
+        return LOG_COLORS[color_name]
+    else:
+        raise ValueError(f"日志颜色 '{color_name}' 不存在")
+
+
+def is_dark_mode() -> bool:
     """
     检测系统是否处于深色模式
 
@@ -100,6 +177,29 @@ def is_dark_mode():
         bool: 如果系统使用深色模式则返回True，否则返回False
     """
     return config.DARK_MODE
+
+
+def set_log_theme(theme="auto"):
+    """
+    设置日志样式主题，不影响应用主题
+
+    Args:
+        theme: 主题名称 ("light", "dark", "auto")
+    """
+    _set_log_theme(theme)
+
+
+def sync_log_theme():
+    """
+    从应用程序主题同步日志颜色设置
+
+    将日志颜色与主应用程序主题保持一致
+    如果主应用程序主题不可用，则不进行更改
+
+    Returns:
+        bool: 同步成功返回True，否则返回False
+    """
+    return _sync_log_theme()
 
 
 # 导出StatusAnimator类便于直接使用
@@ -128,7 +228,6 @@ class StatusAnimator(config.StatusAnimator):
     """
     pass
 
-
 # 应用标题常量
 APP_TITLE = config.APP_TITLE
 
@@ -150,61 +249,16 @@ STATUS_COLORS = {
     "warning": config.STATUS_COLORS["warning"]
 }
 
-# 日志区域样式
-LOG_AREA_STYLE = config.LOG_AREA_STYLE
+# 导出日志颜色常量
+LOG_LEVEL_COLORS = {
+    "success": LOG_COLORS["success"],
+    "warning": LOG_COLORS["warning"],
+    "error": LOG_COLORS["error"],
+    "info": LOG_COLORS["info"],
+    "debug": LOG_COLORS["debug"],
+    "normal": LOG_COLORS["text"]
+}
 
-# 日志颜色方案
-LOG_COLORS = config.LOG_COLORS
-
-# 日志标签样式
-LOG_TAG_STYLE = config.LOG_TAG_STYLE
-
-# 日志HTML模板
-LOG_HTML_TEMPLATE = config.LOG_HTML_TEMPLATE
-
-def format_log_html(timestamp: str, message: str, level: str = "info") -> str:
-    """
-    格式化日志消息为HTML
-    
-    Args:
-        timestamp: 时间戳字符串
-        message: 日志消息内容
-        level: 日志级别 ("success", "warning", "error", "info", "normal")
-    
-    Returns:
-        格式化后的HTML字符串
-    """
-    # 获取标签映射和颜色
-    TAG_MAPPING = {
-        'success': 'SUCCESS',
-        'warning': 'WARN',
-        'error': 'ERROR',
-        'info': 'INFO',
-        'normal': 'STATUS'
-    }
-    
-    # 转换标签
-    level_upper = TAG_MAPPING.get(level, 'INFO')
-    
-    # 处理标签内容
-    TAG_WIDTH = 9
-    if len(level_upper) > TAG_WIDTH - 2:
-        tag = f"[{level_upper[:TAG_WIDTH-2]}]"
-    else:
-        total_spaces = TAG_WIDTH - len(level_upper) - 2
-        left_spaces = total_spaces // 2
-        right_spaces = total_spaces - left_spaces
-        tag = f"[{' ' * left_spaces}{level_upper}{' ' * right_spaces}]"
-    
-    # 获取颜色
-    tag_color = LOG_COLORS.get(level, LOG_COLORS["info"])
-    
-    return LOG_HTML_TEMPLATE.format(
-        text_color=LOG_COLORS["text"],
-        timestamp_color=LOG_COLORS["timestamp"],
-        tag_color=tag_color,
-        tag_style='; '.join(LOG_TAG_STYLE.values()),
-        tag=tag,
-        timestamp=timestamp,
-        message=message
-    )
+# 为向后兼容保留原始导出
+format_log_html = format_log_html
+format_console_log = format_console_log

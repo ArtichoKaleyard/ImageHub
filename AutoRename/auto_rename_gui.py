@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from config.style_config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
+from style.style_config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
     STATUS_BAR_STYLE, THEME
 
 """

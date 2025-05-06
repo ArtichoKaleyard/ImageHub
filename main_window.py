@@ -7,8 +7,8 @@ from ClipboardImageScaler.clipboard_image_scaler_gui import ClipboardImageScaler
 from AutoRename.auto_rename_gui import ImageRenamerGUI
 from ImageProcessingValidator.verify_image_gui import ImageVerifierGUI
 from AutoLabeler.auto_labeler_view import AutoLabelerView
-from config.style_config import APP_STYLE, Q_TAB_WIDGET_STYLE
-from config.style_interface import get_style
+from style.style_config import APP_STYLE, Q_TAB_WIDGET_STYLE
+from style.style_interface import get_style
 
 class MainWindow(QMainWindow):
     def __init__(self):

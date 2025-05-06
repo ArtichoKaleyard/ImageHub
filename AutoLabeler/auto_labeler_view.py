@@ -8,22 +8,20 @@ auto_labeler_view.py
 该模块负责标注辅助工具的界面展示
 """
 
-import sys
-import logging
 import time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton,
-    QSlider, QComboBox, QSpinBox, QCheckBox, QSizePolicy, QFrame, QApplication, QLineEdit, QTextEdit
+    QComboBox, QSpinBox, QFrame, QLineEdit, QTextEdit
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer
-from PyQt6.QtGui import QIcon, QFont
+from PyQt6.QtCore import pyqtSignal, QTimer
 
 # 导入其他模块
 from AutoLabeler.auto_labeler_model import AutoLabelerModel, AutoLabelerMode, AutoLabelerState
 
 # 导入样式接口
 try:
-    from config.style_interface import get_style, get_theme, StatusAnimator, LOG_COLORS, LOG_TAG_STYLE
+    from style.style_interface import get_style, get_theme, StatusAnimator
+    from style.log_style import LOG_COLORS, LOG_TAG_STYLE
 except ImportError:
     # 默认样式函数，当无法导入时使用
     def get_style(style_name):
@@ -433,7 +431,7 @@ class AutoLabelerView(QWidget):
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         
         # 使用样式接口格式化日志
-        from config.style_interface import format_log_html
+        from style.style_interface import format_log_html
         log_html = format_log_html(timestamp, message, level)
 
         self.log_text.append(log_html)

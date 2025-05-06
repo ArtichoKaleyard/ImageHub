@@ -1,23 +1,22 @@
 import sys
 import os
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
-from PyQt6.QtCore import Qt, QSize, QSettings, QThreadPool, QUrl
+from PyQt6.QtCore import Qt, QSettings, QThreadPool, QUrl
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QCheckBox,
     QFileDialog, QTabWidget, QTextEdit, QSpinBox, QProgressBar,
-    QGroupBox, QFormLayout, QMessageBox, QSplitter, QFrame,QStatusBar
+    QGroupBox, QFormLayout, QMessageBox, QStatusBar
 )
-from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 # 导入适配器
-from ImageProcessingValidator.image_verifier_adapter import ImageVerifierAdapter, VerifierWorker
+from ImageProcessingValidator.image_verifier_adapter import VerifierWorker
 
 # 导入样式接口
-from config.style_interface import get_style, get_theme, StatusAnimator, DEFAULT_WINDOW_SIZE, STATUS_COLORS
+from style.style_interface import get_style, get_theme, DEFAULT_WINDOW_SIZE
 
 
 class ImageVerifierGUI(QMainWindow):
