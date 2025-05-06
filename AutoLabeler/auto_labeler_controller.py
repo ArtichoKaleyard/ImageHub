@@ -9,15 +9,9 @@ auto_labeler_controller.py
 
 import sys
 import logging
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QObject, QEvent, Qt, pyqtSignal, QPointF
 from PyQt6.QtGui import QKeyEvent, QMouseEvent
-
-from auto_labeler_model import AutoLabelerModel, AutoLabelerMode, AutoLabelerState
-from auto_labeler_view import AutoLabelerView
-
-# 导入样式接口
-from config.style_interface import get_style
 
 # 导入第三方键盘控制库
 try:
@@ -37,6 +31,7 @@ class EventFilter(QObject):
         super().__init__(parent)
         self._mouse_listener = None
         self._keyboard_listener = None
+        self._is_running = False
         self._init_global_listeners()
 
     def _init_global_listeners(self):
@@ -54,6 +49,8 @@ class EventFilter(QObject):
         # 启动键盘监听
         self._keyboard_listener = keyboard.Listener(on_press=self._handle_key_press)
         self._keyboard_listener.start()
+
+        self._is_running = True
 
     def _handle_mouse_click(self, x, y, button, pressed):
         """处理全局鼠标点击事件"""
@@ -100,12 +97,15 @@ class EventFilter(QObject):
 
     def _map_pynput_button(self, button):
         """映射pynput按钮到Qt按钮"""
-        from pynput.mouse import Button
-        return {
-            Button.left: Qt.MouseButton.LeftButton,
-            Button.right: Qt.MouseButton.RightButton,
-            Button.middle: Qt.MouseButton.MiddleButton
-        }.get(button)
+        try:
+            from pynput.mouse import Button
+            return {
+                Button.left: Qt.MouseButton.LeftButton,
+                Button.right: Qt.MouseButton.RightButton,
+                Button.middle: Qt.MouseButton.MiddleButton
+            }.get(button)
+        except ImportError:
+            return None
 
     def _map_pynput_key(self, key):
         """映射pynput按键到Qt按键"""
@@ -120,88 +120,83 @@ class EventFilter(QObject):
 
     def stop(self):
         """停止监听器"""
-        if self._mouse_listener:
-            self._mouse_listener.stop()
-        if self._keyboard_listener:
-            self._keyboard_listener.stop()
+        if self._is_running:
+            if self._mouse_listener:
+                self._mouse_listener.stop()
+            if self._keyboard_listener:
+                self._keyboard_listener.stop()
+            self._is_running = False
+
+    def is_running(self):
+        """检查监听器是否正在运行"""
+        return self._is_running
 
 
 class AutoLabelerController:
     """自动标注控制器类"""
 
-    def __init__(self, application=None, parent_window=None):
+    def __init__(self, model, view, application=None, parent_window=None):
         """
         初始化控制器
 
         Args:
+            model: 自动标注模型实例
+            view: 自动标注视图实例
             application: QApplication实例，用于全局事件过滤
-            parent_window: 父窗口，用于设置事件过滤器
         """
         # 获取或配置日志记录器
         self.logger = logging.getLogger("AutoLabeler")
 
-        # 创建模型和视图
-        self.model = AutoLabelerModel()
-        self.view = AutoLabelerView(parent=parent_window)
+        # 连接模型和视图
+        self.model = model
+        self.view = view
+        self.app = application or QApplication.instance()
+        self.parent_window = parent_window
+
+        # 标记控制器是否已初始化完成
+        self._initialized = False
 
         # 初始化全局事件过滤器
-        self.event_filter = EventFilter()
-
-        # 确保跨线程信号安全
-        self.event_filter.mouse_press_signal.connect(
-            self.model.handle_mouse_press,
-            Qt.ConnectionType.QueuedConnection
-        )
-        self.event_filter.mouse_release_signal.connect(
-            self.model.handle_mouse_release,
-            Qt.ConnectionType.QueuedConnection
-        )
-        self.event_filter.key_press_signal.connect(
-            self.model.handle_key_press,
-            Qt.ConnectionType.QueuedConnection
-        )
+        self.event_filter = None
+        self._init_event_filter()
 
         # 初始化键盘控制器
         self.keyboard = KeyboardController() if KeyboardController else None
         if not self.keyboard:
-            self.model.logger.warning("键盘模拟功能受限，请安装pynput库获得完整功能")
-            self.view.update_status("键盘模拟功能受限，请安装pynput库", "warning")
+            self.logger.warning("键盘模拟功能受限，请安装pynput库获得完整功能")
+            if self.view:
+                self.view.update_status("键盘模拟功能受限，请安装pynput库", "warning")
 
         # 连接信号与槽
         self._setup_connections()
 
+        self._initialized = True
         self.logger.info("自动标注控制器初始化完成")
+
+    def _init_event_filter(self):
+        """初始化全局事件过滤器"""
+        self.event_filter = EventFilter()
+
+        # 确保跨线程信号安全
+        if self.model:
+            self.event_filter.mouse_press_signal.connect(
+                self.model.handle_mouse_press,
+                Qt.ConnectionType.QueuedConnection
+            )
+            self.event_filter.mouse_release_signal.connect(
+                self.model.handle_mouse_release,
+                Qt.ConnectionType.QueuedConnection
+            )
+            self.event_filter.key_press_signal.connect(
+                self.model.handle_key_press,
+                Qt.ConnectionType.QueuedConnection
+            )
 
     def _setup_connections(self):
         """设置信号与槽的连接"""
-        # 视图到模型的连接
-        self.view.start_signal.connect(self.model.start_monitoring)
-        self.view.pause_signal.connect(self.model.pause_monitoring)
-        self.view.stop_signal.connect(self.model.stop_monitoring)
-        self.view.mode_changed_signal.connect(self._on_mode_changed)
-        self.view.auto_next_changed_signal.connect(self.model.set_auto_next)
-        self.view.delay_draw_changed_signal.connect(self.model.set_delay_draw)
-        self.view.delay_next_changed_signal.connect(self.model.set_delay_next)
-
-        # 模型到视图的连接
-        self.model.state_changed.connect(self.view.update_state)
-        self.model.status_changed.connect(self.view.update_status)
-        self.model.statistics_updated.connect(self.view.update_statistics)
-
-        # 事件过滤器连接
-        self.event_filter.mouse_press_signal.connect(self.model.handle_mouse_press)
-        self.event_filter.mouse_release_signal.connect(self.model.handle_mouse_release)
-        self.event_filter.key_press_signal.connect(self.model.handle_key_press)
-
-        # 键盘命令连接
-        self.model.send_key_signal.connect(self._send_key_event)
-
-    def _on_mode_changed(self, index):
-        """处理模式变化"""
-        if index == 0:
-            self.model.set_mode(AutoLabelerMode.DRAW_ONLY)
-        elif index == 1:
-            self.model.set_mode(AutoLabelerMode.DRAW_AND_NEXT)
+        if self.model:
+            # 键盘命令连接
+            self.model.send_key_signal.connect(self._send_key_event)
 
     def _send_key_event(self, key):
         """
@@ -218,46 +213,66 @@ class AutoLabelerController:
             self.keyboard.release(key.lower())
         else:
             # 模拟QKeyEvent事件
-            key_code = getattr(Qt.Key, f"Key_{key}")
-            key_event = QKeyEvent(QEvent.Type.KeyPress, key_code, Qt.KeyboardModifier.NoModifier)
-            QApplication.sendEvent(self.target_window, key_event)
+            try:
+                key_code = getattr(Qt.Key, f"Key_{key}")
+                key_event = QKeyEvent(QEvent.Type.KeyPress, key_code, Qt.KeyboardModifier.NoModifier)
+                QApplication.sendEvent(self.view, key_event)
 
-            # 模拟按键释放
-            release_event = QKeyEvent(QEvent.Type.KeyRelease, key_code, Qt.KeyboardModifier.NoModifier)
-            QApplication.sendEvent(self.target_window, release_event)
+                # 模拟按键释放
+                release_event = QKeyEvent(QEvent.Type.KeyRelease, key_code, Qt.KeyboardModifier.NoModifier)
+                QApplication.sendEvent(self.view, release_event)
+            except (AttributeError, TypeError) as e:
+                self.logger.error(f"发送按键事件失败: {e}")
 
-    def show(self):
-        """显示视图"""
-        self.view.show()
+    def is_initialized(self):
+        """检查控制器是否已初始化完成"""
+        return self._initialized
+
+    def cleanup(self):
+        """清理资源"""
+        if self.event_filter:
+            self.event_filter.stop()
 
 
-class AutoLabelerWidget(QMainWindow):
-    """独立运行时的主窗口类"""
+class AutoLabelerWidget(QObject):
+    """自动标注工具组件类，用于集成到其他界面"""
 
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("自动标注辅助工具")
-        self.resize(500, 400)
+    def __init__(self, view=None, parent=None):
+        super().__init__(parent)
+        from AutoLabeler.auto_labeler_model import AutoLabelerModel
+        from AutoLabeler.auto_labeler_view import AutoLabelerView
+
+        # 创建或使用传入的视图
+        self.view = view or AutoLabelerView(parent)
+
+        # 确保模型存在
+        self.model = self.view.model or AutoLabelerModel()
+        if not self.view.model:
+            self.view.model = self.model
 
         # 创建控制器
-        self.controller = AutoLabelerController(QApplication.instance(), self)
+        self.controller = AutoLabelerController(
+            model=self.model,
+            view=self.view
+        )
 
-        # 设置主窗口部件
-        self.setCentralWidget(self.controller.view)
+        # 确保视图知道控制器
+        self.view.controller = self.controller
 
-        # 应用样式
-        self.setStyleSheet(get_style('APP_STYLE'))
+    def get_widget(self):
+        """获取可以添加到布局的小部件"""
+        return self.view
 
-    def closeEvent(self, event):
-        """关闭窗口事件重写"""
-        self.controller.event_filter.stop()
-        super().closeEvent(event)
+    def cleanup(self):
+        """清理资源"""
+        if hasattr(self, 'controller') and self.controller:
+            self.controller.cleanup()
 
 
-# 独立运行时的入口
+# 独立运行时的入口函数
 def main():
     """主函数"""
-    # 配置日志 - 只在根模块中配置一次
+    # 配置日志
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -265,11 +280,18 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')  # 使用Fusion风格以获得更好的跨平台体验
 
-    # 创建并显示主窗口
-    window = AutoLabelerWidget()
-    window.show()
+    # 创建组件
+    from AutoLabeler.auto_labeler_view import AutoLabelerView
+    view = AutoLabelerView()
+    auto_labeler = AutoLabelerWidget(view)
 
-    sys.exit(app.exec())
+    # 显示视图
+    view.show()
+
+    # 清理并退出
+    result = app.exec()
+    auto_labeler.cleanup()
+    sys.exit(result)
 
 
 if __name__ == "__main__":

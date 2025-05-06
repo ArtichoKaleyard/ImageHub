@@ -62,6 +62,8 @@ class AutoLabelerModel(QObject):
             'session_boxes': 0,  # 本次会话绘制的框数量
             'session_images': 0,  # 本次会话处理的图片数量
             'start_time': 0,  # 会话开始时间
+            'paused_duration': 0,  # 暂停的总时长
+            'pause_time': 0,  # 上次暂停的时间点
         }
 
         # 初始化定时器
@@ -76,6 +78,11 @@ class AutoLabelerModel(QObject):
         self._status_timer = QTimer()
         self._status_timer.setSingleShot(True)
         self._status_timer.timeout.connect(self._clear_status)
+
+        # 统计更新定时器
+        self._stats_timer = QTimer()
+        self._stats_timer.timeout.connect(self._update_stats)
+        self._stats_timer.setInterval(1000)  # 每秒更新一次
 
         self.logger.info("自动标注模型初始化完成")
 
@@ -123,12 +130,18 @@ class AutoLabelerModel(QObject):
     @property
     def statistics(self):
         """获取统计信息"""
+        stats = self._stats.copy()
+
         # 计算时长
         duration = 0
         if self._stats['start_time'] > 0:
-            duration = time.time() - self._stats['start_time']
+            if self._state == AutoLabelerState.PAUSED:
+                # 处于暂停状态，使用暂停时间计算
+                duration = self._stats['pause_time'] - self._stats['start_time'] - self._stats['paused_duration']
+            else:
+                # 处于活动状态，使用当前时间计算
+                duration = time.time() - self._stats['start_time'] - self._stats['paused_duration']
 
-        stats = self._stats.copy()
         stats['duration'] = duration
 
         # 计算速率
@@ -143,24 +156,45 @@ class AutoLabelerModel(QObject):
 
     def start_monitoring(self):
         """开始监控鼠标操作"""
-        if self._state == AutoLabelerState.IDLE or self._state == AutoLabelerState.PAUSED:
+        current_time = time.time()
+
+        if self._state == AutoLabelerState.IDLE:
+            # 从空闲状态开始
+            self._stats['start_time'] = current_time
+            self._stats['session_boxes'] = 0
+            self._stats['session_images'] = 0
+            self._stats['paused_duration'] = 0
+            self._stats['pause_time'] = 0
             self._state = AutoLabelerState.MONITORING
-            self._draw_detected = False
+            self._stats_timer.start()
 
-            # 重置会话统计
-            if self._stats['start_time'] == 0:
-                self._stats['start_time'] = time.time()
-                self._stats['session_boxes'] = 0
-                self._stats['session_images'] = 0
+        elif self._state == AutoLabelerState.PAUSED:
+            # 从暂停状态恢复
+            if self._stats['pause_time'] > 0:
+                # 计算暂停的时长并累加
+                self._stats['paused_duration'] += (current_time - self._stats['pause_time'])
+                self._stats['pause_time'] = 0
+            self._state = AutoLabelerState.MONITORING
+            self._stats_timer.start()
 
-            self.state_changed.emit(self._state)
-            self.status_changed.emit("监控已启动", "success")
-            self.logger.info("开始监控鼠标操作")
+        self._draw_detected = False
+        self.state_changed.emit(self._state)
+        self.status_changed.emit("监控已启动", "success")
+        self.statistics_updated.emit(self.statistics)
+        self.logger.info("开始监控鼠标操作")
 
     def pause_monitoring(self):
         """暂停监控"""
         if self._state == AutoLabelerState.MONITORING or self._state == AutoLabelerState.DRAWING:
             self._state = AutoLabelerState.PAUSED
+            # 记录暂停开始时间
+            self._stats['pause_time'] = time.time()
+            # 停止统计定时器
+            self._stats_timer.stop()
+            # 停止所有活动定时器
+            self._auto_draw_timer.stop()
+            self._auto_next_timer.stop()
+
             self.state_changed.emit(self._state)
             self.status_changed.emit("监控已暂停", "warning")
             self.logger.info("监控已暂停")
@@ -171,9 +205,14 @@ class AutoLabelerModel(QObject):
             self._state = AutoLabelerState.IDLE
             self._auto_draw_timer.stop()
             self._auto_next_timer.stop()
+            self._stats_timer.stop()
 
-            # 更新统计
+            # 重置统计相关时间
             self._stats['start_time'] = 0
+            self._stats['paused_duration'] = 0
+            self._stats['pause_time'] = 0
+
+            # 最后一次更新统计
             self.statistics_updated.emit(self.statistics)
 
             self.state_changed.emit(self._state)
@@ -217,8 +256,8 @@ class AutoLabelerModel(QObject):
                 self._mouse_pressed = True
                 self._state = AutoLabelerState.DRAWING
                 self.state_changed.emit(self._state)
-        except:
-            pass
+        except Exception as e:
+            self.logger.error(f"处理鼠标按下事件出错: {e}")
 
     def handle_mouse_release(self, event: QMouseEvent):
         """处理鼠标释放事件"""
@@ -243,8 +282,8 @@ class AutoLabelerModel(QObject):
                 self._state = AutoLabelerState.MONITORING
                 self.state_changed.emit(self._state)
                 self.status_changed.emit("检测到框绘制完成", "info")
-        except:
-            pass
+        except Exception as e:
+            self.logger.error(f"处理鼠标释放事件出错: {e}")
 
     def handle_key_press(self, event: QKeyEvent):
         """处理键盘按键事件(用于捕获和计数D键)"""
@@ -255,8 +294,8 @@ class AutoLabelerModel(QObject):
                 self._stats['session_images'] += 1
                 self.statistics_updated.emit(self.statistics)
                 self.logger.debug("检测到D键，图片计数+1")
-        except:
-            pass
+        except Exception as e:
+            self.logger.error(f"处理键盘事件出错: {e}")
 
     def _send_draw_key(self):
         """发送W键以开启绘制模式"""
@@ -285,3 +324,8 @@ class AutoLabelerModel(QObject):
     def _clear_status(self):
         """清除状态信息"""
         self.status_changed.emit("", "normal")
+
+    def _update_stats(self):
+        """定时更新统计信息"""
+        if self._state == AutoLabelerState.MONITORING or self._state == AutoLabelerState.DRAWING:
+            self.statistics_updated.emit(self.statistics)
