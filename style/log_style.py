@@ -168,7 +168,7 @@ def sync_from_app_theme():
                 "timestamp": "text_secondary",
                 "text": "text",
                 "text_secondary": "text_secondary",
-                "background": "background",
+                "background": "card_background",
                 "border": "border"
             }
 
