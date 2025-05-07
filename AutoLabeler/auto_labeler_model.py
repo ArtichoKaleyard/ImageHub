@@ -87,6 +87,11 @@ class AutoLabelerModel(QObject):
         self._stats_timer.timeout.connect(self._update_stats)
         self._stats_timer.setInterval(1000)  # 每秒更新一次
 
+        # 新增定时器：用于延时切换回"监控中"状态
+        self._reset_state_timer = QTimer()
+        self._reset_state_timer.setSingleShot(True)
+        self._reset_state_timer.timeout.connect(self._reset_to_monitoring)
+
         self.logger.info("自动标注模型初始化完成")
 
     @property
@@ -297,6 +302,9 @@ class AutoLabelerModel(QObject):
 
             self._draw_detected = False
 
+            # 缩短延迟时间并直接触发状态恢复
+            self._reset_state_timer.start(500)  # 0.5秒后切换
+
     def _send_next_key(self):
         """发送D键以跳转下一张"""
         if self._state == AutoLabelerState.MONITORING:
@@ -304,6 +312,9 @@ class AutoLabelerModel(QObject):
 
             # 通知控制器发送D键
             self.send_key_signal.emit("D")
+
+            # 缩短延迟时间并直接触发状态恢复
+            self._reset_state_timer.start(500)  # 0.5秒后切换
 
     def _clear_status(self):
         """清除状态信息"""
@@ -313,3 +324,13 @@ class AutoLabelerModel(QObject):
         """定时更新统计信息"""
         if self._state == AutoLabelerState.MONITORING or self._state == AutoLabelerState.DRAWING:
             self.statistics_updated.emit(self.statistics)
+
+    def _reset_to_monitoring(self):
+        """延时切换回监控中状态"""
+        if self._state == AutoLabelerState.MONITORING:
+            # 强制更新状态为 MONITORING
+            self._state = AutoLabelerState.MONITORING
+            self.state_changed.emit(self._state)
+            # 仅发送状态变更信号，不触发status_changed
+            # 防止状态恢复时status_changed覆盖state_changed触发的动画
+            # self.status_changed.emit("监控中", "success")

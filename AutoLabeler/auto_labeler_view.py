@@ -63,9 +63,9 @@ except ImportError:
             self.timer = QTimer()
             self.timer.timeout.connect(self._reset_style)
 
-        def start(self, text, color):
+        def start(self, text, color1, color2=None):  # 接受两个颜色参数，忽略第二个
             self.label.setText(text)
-            self.label.setStyleSheet(f"QLabel {{ color: {color}; font-weight: bold; }}")
+            self.label.setStyleSheet(f"QLabel {{ color: {color1}; font-weight: bold; }}")
             self.timer.start(3000)  # 3秒后重置
 
         def stop(self):
@@ -479,8 +479,23 @@ class AutoLabelerView(QWidget):
 
     def update_state(self, state):
         """更新界面状态 - 统一处理状态变化"""
-        # 根据状态更新UI
-        if state == AutoLabelerState.IDLE:
+        if state == AutoLabelerState.MONITORING:
+            # 监控状态 - 更新按钮
+            self.start_button.setEnabled(False)
+            self.pause_button.setEnabled(True)
+            self.pause_button.setText("暂停")
+            self.stop_button.setEnabled(True)
+
+            # 确保触发流动效果
+            try:
+                success_color = get_theme("success")
+                info_color = get_theme("info")
+                self.status_animator.start("监控中", success_color, info_color)  # 传递两个颜色
+            except (AttributeError, NameError):
+                # 后备方案：仅使用第一个颜色
+                self.status_animator.start("监控中", "#4CAF50", "#2196F3")  # 第二个参数被忽略
+
+        elif state == AutoLabelerState.IDLE:
             # 空闲状态 - 重置界面
             self.start_button.setEnabled(True)
             self.pause_button.setEnabled(False)
@@ -493,21 +508,6 @@ class AutoLabelerView(QWidget):
                 self.status_animator.set_static_color("就绪", info_color)
             except (AttributeError, NameError):
                 self.status_animator.set_static_color("就绪", "#2196F3")
-
-        elif state == AutoLabelerState.MONITORING:
-            # 监控状态 - 更新按钮
-            self.start_button.setEnabled(False)
-            self.pause_button.setEnabled(True)
-            self.pause_button.setText("暂停")
-            self.stop_button.setEnabled(True)
-
-            # 更新状态栏为监控中并使用流动动画
-            try:
-                success_color = get_theme("success")
-                info_color = get_theme("info")
-                self.status_animator.start("监控中", success_color, info_color)
-            except (AttributeError, NameError):
-                self.status_animator.start("监控中", "#4CAF50", "#2196F3")
 
         elif state == AutoLabelerState.DRAWING:
             # 绘制状态 - 状态栏动画
