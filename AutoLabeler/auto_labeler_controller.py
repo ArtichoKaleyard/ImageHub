@@ -8,7 +8,6 @@ auto_labeler_controller.py
 """
 
 import sys
-import logging
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QObject, QEvent, Qt, pyqtSignal, QPointF
 from PyQt6.QtGui import QKeyEvent, QMouseEvent
@@ -138,14 +137,10 @@ class AutoLabelerController:
     def __init__(self, model=None, view=None, application=None, parent_window=None):
         """
         初始化控制器
-
-        Args:
-            model: 自动标注模型实例
-            view: 自动标注视图实例
-            application: QApplication实例，用于全局事件过滤
         """
-        # 获取或配置日志记录器
-        self.logger = logging.getLogger("AutoLabeler")
+        # 使用 Logger 类
+        from Logger.logger import Logger
+        self.logger = Logger(log_to_console=True, log_to_gui=True)
 
         # 连接模型和视图
         self.model = model
@@ -175,7 +170,7 @@ class AutoLabelerController:
         self._setup_connections()
 
         self._initialized = True
-        self.logger.info("自动标注控制器初始化完成")
+        self.logger.info("自动标注辅助工具控制器层初始化完成")
 
     def _init_event_filter(self):
         """初始化全局事件过滤器"""
@@ -282,10 +277,6 @@ class AutoLabelerWidget(QObject):
 # 独立运行时的入口函数
 def main():
     """主函数"""
-    # 配置日志
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
     # 创建应用
     app = QApplication(sys.argv)
     app.setStyle('Fusion')  # 使用Fusion风格以获得更好的跨平台体验

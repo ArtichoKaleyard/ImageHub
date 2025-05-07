@@ -100,7 +100,7 @@ class AutoLabelerView(QWidget):
         self.setWindowTitle("自动标注辅助工具")
         self.resize(650, 500)  # 调整窗口大小以适应新布局
 
-        # 创建新的日志记录器
+        # 使用 Logger 类
         self.logger = Logger(log_to_console=True, log_to_gui=True)
 
         # 兼容旧代码的 logger 接口
@@ -116,13 +116,11 @@ class AutoLabelerView(QWidget):
         # 状态动画器初始化
         self.status_animator = StatusAnimator(self.status_label)
 
-        # 设置初始静态颜色 - 确保无论是否导入样式都执行
+        # 设置初始状态颜色
         try:
-            # 尝试使用get_theme函数
             info_color = get_theme('info')
             self.status_animator.set_static_color("就绪", info_color)
         except (AttributeError, NameError):
-            # 如果失败，使用默认蓝色
             self.status_animator.set_static_color("就绪", "#2196F3")
 
         # 统计更新定时器
@@ -130,8 +128,7 @@ class AutoLabelerView(QWidget):
         self.stats_timer.timeout.connect(self._refresh_stats)
         self.stats_timer.start(1000)  # 每秒更新一次
 
-        # 日志记录启动信息
-        self.logger.info("自动标注辅助工具已启动")
+        self.logger.info("自动标注辅助工具初始化完成")
 
     def _setup_legacy_logger(self):
         """设置兼容旧代码的logger接口"""
@@ -389,15 +386,17 @@ class AutoLabelerView(QWidget):
         # 将自身添加为控制器的视图
         self.controller.view = self
 
-        self.logger.info("控制器初始化完成")
-
+        # 不再记录额外的日志，控制器初始化信息已由控制器自身记录
         return self.controller
 
     def _setup_connections(self):
         """设置信号与槽的连接"""
+        # 按钮信号连接
         self.start_button.clicked.connect(self._on_start_clicked)
         self.pause_button.clicked.connect(self._on_pause_clicked)
         self.stop_button.clicked.connect(self._on_stop_clicked)
+
+        # 参数变更信号
         self.mode_combo.currentIndexChanged.connect(self.mode_changed_signal.emit)
         self.draw_delay_spin.valueChanged.connect(self.delay_draw_changed_signal.emit)
         self.next_delay_spin.valueChanged.connect(self.delay_next_changed_signal.emit)
@@ -424,6 +423,7 @@ class AutoLabelerView(QWidget):
 
     def _on_start_clicked(self):
         """开始按钮点击处理"""
+        # 更新UI状态
         self.start_button.setEnabled(False)
         self.pause_button.setEnabled(True)
         self.stop_button.setEnabled(True)
@@ -432,66 +432,109 @@ class AutoLabelerView(QWidget):
         if not hasattr(self, 'controller'):
             self._setup_controller()
 
+        # 发送开始信号
         self.start_signal.emit()
-        self.logger.success("开始监控")
 
     def _on_pause_clicked(self):
         """暂停按钮点击处理"""
         if self.pause_button.text() == "暂停":
             self.pause_button.setText("继续")
             self.pause_signal.emit()
-            self.logger.info("监控已暂停")
+            # 不再记录额外的日志，状态变化会触发状态更新
         else:
             self.pause_button.setText("暂停")
             self.start_signal.emit()
-            self.logger.info("监控已继续")
+            # 不再记录额外的日志，状态变化会触发状态更新
 
     def _on_stop_clicked(self):
         """停止按钮点击处理"""
+        # 更新UI状态
         self.start_button.setEnabled(True)
         self.pause_button.setEnabled(False)
         self.pause_button.setText("暂停")
         self.stop_button.setEnabled(False)
+
+        # 发送停止信号
         self.stop_signal.emit()
-        self.logger.info("监控已停止")
+        # 不再记录额外的日志，状态变化会触发状态更新
 
     def update_state(self, state):
-        """更新界面状态"""
+        """更新界面状态 - 统一处理状态变化"""
+        # 根据状态更新UI
         if state == AutoLabelerState.IDLE:
+            # 空闲状态 - 重置界面
             self.start_button.setEnabled(True)
             self.pause_button.setEnabled(False)
             self.pause_button.setText("暂停")
             self.stop_button.setEnabled(False)
-            # 更新状态栏为就绪
-            self.update_status("就绪", "info")
+
+            # 更新状态栏为就绪 - 只在这里更新而不在update_status中重复
+            try:
+                info_color = get_theme("info")
+                self.status_animator.set_static_color("就绪", info_color)
+            except (AttributeError, NameError):
+                self.status_animator.set_static_color("就绪", "#2196F3")
+
         elif state == AutoLabelerState.MONITORING:
+            # 监控状态 - 更新按钮
             self.start_button.setEnabled(False)
             self.pause_button.setEnabled(True)
             self.pause_button.setText("暂停")
             self.stop_button.setEnabled(True)
-            # 更新状态栏为监控中
-            self.update_status("监控中", "success")
+
+            # 更新状态栏为监控中并使用流动动画
+            try:
+                success_color = get_theme("success")
+                info_color = get_theme("info")
+                self.status_animator.start("监控中", success_color, info_color)
+            except (AttributeError, NameError):
+                self.status_animator.start("监控中", "#4CAF50", "#2196F3")
+
         elif state == AutoLabelerState.DRAWING:
-            # 绘制状态不改变按钮状态，但更新状态栏
-            self.update_status("绘制中", "info")
+            # 绘制状态 - 状态栏动画
+            try:
+                info_color = get_theme("info")
+                success_color = get_theme("success")
+                self.status_animator.start("绘制中", info_color, success_color)
+            except (AttributeError, NameError):
+                self.status_animator.start("绘制中", "#2196F3", "#4CAF50")
+
         elif state == AutoLabelerState.PAUSED:
+            # 暂停状态 - 更新按钮
             self.start_button.setEnabled(False)
             self.pause_button.setEnabled(True)
             self.pause_button.setText("继续")
             self.stop_button.setEnabled(True)
+
             # 更新状态栏为已暂停
-            self.update_status("已暂停", "warning")
+            try:
+                warning_color = get_theme("warning")
+                self.status_animator.set_static_color("已暂停", warning_color)
+            except (AttributeError, NameError):
+                self.status_animator.set_static_color("已暂停", "#FF9800")
 
     def update_status(self, message, status_type="normal"):
-        """更新状态信息"""
+        """更新状态信息并记录日志 - 统一入口"""
         if not message:
-            # 重置为就绪状态
-            try:
-                info_color = get_theme('info')
-                self.status_animator.set_static_color("就绪", info_color)
-            except (AttributeError, NameError):
-                self.status_animator.set_static_color("就绪", "#2196F3")
             return
+
+        # 特殊处理"监控已停止"状态，避免重复日志
+        if message == "监控已停止":
+            # 仅在状态不是"已停止"时更新
+            if self.status_label.text() != "已停止":
+                self.status_animator.stop()  # 停止动画并设置为灰色
+                self.logger.warning(message)  # 使用warning级别记录日志
+            return
+
+        # 根据状态类型记录对应级别的日志
+        if status_type == "success":
+            self.logger.success(message)
+        elif status_type == "warning":
+            self.logger.warning(message)
+        elif status_type == "error":
+            self.logger.error(message)
+        elif status_type == "info" or status_type == "normal":
+            self.logger.info(message)
 
         # 根据状态类型确定颜色
         try:
@@ -518,20 +561,8 @@ class AutoLabelerView(QWidget):
             else:
                 color = "#333333"
 
-        # 启动状态动画/静态颜色
-        self.status_animator.start(message, color)
-
-        # 根据状态类型记录对应级别的日志
-        if status_type == "success":
-            self.logger.success(message)
-        elif status_type == "warning":
-            self.logger.warning(message)
-        elif status_type == "error":
-            self.logger.error(message)
-        elif status_type == "info" or status_type == "normal":
-            self.logger.info(message)
-        else:
-            self.logger.info(message)
+        # 更新状态显示
+        self.status_animator.set_static_color(message, color)
 
     def update_statistics(self, stats):
         """更新统计信息"""

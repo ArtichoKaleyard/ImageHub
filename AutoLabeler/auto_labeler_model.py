@@ -41,7 +41,9 @@ class AutoLabelerModel(QObject):
 
     def __init__(self):
         super().__init__()
-        self._setup_logger()
+        # 使用 Logger 类
+        from Logger.logger import Logger
+        self.logger = Logger(log_to_console=True, log_to_gui=True)
 
         # 状态与配置
         self._state = AutoLabelerState.IDLE
@@ -84,22 +86,6 @@ class AutoLabelerModel(QObject):
         self._stats_timer.setInterval(1000)  # 每秒更新一次
 
         self.logger.info("自动标注模型初始化完成")
-
-    def _setup_logger(self):
-        """设置日志记录器"""
-        # 获取或配置日志记录器
-        self.logger = logging.getLogger("AutoLabeler")
-        self.logger.setLevel(logging.DEBUG)
-
-        # 检查是否已存在处理器，如果没有才添加
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
-            self.logger.addHandler(handler)
-            # 防止日志传递到根记录器
-            self.logger.propagate = False
 
     @property
     def state(self):
@@ -175,7 +161,6 @@ class AutoLabelerModel(QObject):
         self.state_changed.emit(self._state)
         self.status_changed.emit("监控已启动", "success")
         self.statistics_updated.emit(self.statistics)
-        self.logger.info("开始监控鼠标操作")
 
     def pause_monitoring(self):
         """暂停监控"""
@@ -191,7 +176,6 @@ class AutoLabelerModel(QObject):
 
             self.state_changed.emit(self._state)
             self.status_changed.emit("监控已暂停", "warning")
-            self.logger.info("监控已暂停")
 
     def stop_monitoring(self):
         """停止监控"""
@@ -210,8 +194,7 @@ class AutoLabelerModel(QObject):
             self.statistics_updated.emit(self.statistics)
 
             self.state_changed.emit(self._state)
-            self.status_changed.emit("监控已停止", "normal")
-            self.logger.info("监控已停止")
+            self.status_changed.emit("监控已停止", "warning")
 
     def set_mode(self, mode):
         """设置标注模式"""
@@ -219,18 +202,15 @@ class AutoLabelerModel(QObject):
             self._mode = mode
 
             mode_str = "仅自动绘制" if mode == AutoLabelerMode.DRAW_ONLY else "绘制并下一张"
-            self.logger.info(f"设置标注模式: {mode_str}")
             self.status_changed.emit(f"标注模式: {mode_str}", "info")
 
     def set_delay_draw(self, ms):
         """设置绘制延迟时间"""
         self._delay_draw = max(100, min(2000, ms))
-        self.logger.info(f"设置绘制延迟: {self._delay_draw}ms")
 
     def set_delay_next(self, ms):
         """设置下一张延迟时间"""
         self._delay_next = max(100, min(2000, ms))
-        self.logger.info(f"设置下一张延迟: {self._delay_next}ms")
 
     def handle_mouse_press(self, event: QMouseEvent):
         """处理鼠标按下事件"""
@@ -239,7 +219,6 @@ class AutoLabelerModel(QObject):
 
         try:
             if event.button() == Qt.MouseButton.LeftButton:
-                self.logger.debug("检测到鼠标左键按下（全局）")
                 self._mouse_pressed = True
                 self._state = AutoLabelerState.DRAWING
                 self.state_changed.emit(self._state)
@@ -253,7 +232,6 @@ class AutoLabelerModel(QObject):
 
         try:
             if event.button() == Qt.MouseButton.LeftButton and self._mouse_pressed:
-                self.logger.debug("检测到鼠标左键释放，可能完成绘制")
                 self._mouse_pressed = False
                 self._last_release_time = time.time()
                 self._draw_detected = True
@@ -280,15 +258,13 @@ class AutoLabelerModel(QObject):
                 self._stats['total_images'] += 1
                 self._stats['session_images'] += 1
                 self.statistics_updated.emit(self.statistics)
-                self.logger.debug("检测到D键，图片计数+1")
         except Exception as e:
             self.logger.error(f"处理键盘事件出错: {e}")
 
     def _send_draw_key(self):
         """发送W键以开启绘制模式"""
         if self._state == AutoLabelerState.MONITORING and self._draw_detected:
-            self.logger.info("自动发送绘制快捷键(W)")
-            self.status_changed.emit("自动发送绘制快捷键", "success")
+            self.status_changed.emit("自动发送绘制快捷键", "info")
 
             # 通知控制器发送W键
             self.send_key_signal.emit("W")
@@ -302,8 +278,7 @@ class AutoLabelerModel(QObject):
     def _send_next_key(self):
         """发送D键以跳转下一张"""
         if self._state == AutoLabelerState.MONITORING:
-            self.logger.info("自动发送下一张快捷键(D)")
-            self.status_changed.emit("自动前往下一张", "success")
+            self.status_changed.emit("自动前往下一张", "info")
 
             # 通知控制器发送D键
             self.send_key_signal.emit("D")

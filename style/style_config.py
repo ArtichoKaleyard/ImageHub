@@ -647,90 +647,90 @@ LOG_HTML_TEMPLATE = """
 # ---------------------- 状态动画类 ----------------------
 
 class StatusAnimator:
-    """状态栏动画控制器 - 简化版流动效果"""
+    """状态栏动画控制器 - 完整版流动效果"""
 
     def __init__(self, status_label):
         """初始化状态动画控制器
-
         Args:
             status_label: 要应用动画效果的QLabel
         """
         self.label = status_label
         self.timer = QTimer()
+        self.reset_timer = QTimer()  # 添加重置定时器
         self.animation_pos = 0  # 动画位置标记 (0-100)
         self.direction = 1  # 动画方向 (1=正向, -1=反向)
         self.current_colors = None  # 当前使用的颜色元组
         self.message = ""  # 当前显示的消息
-
         # 设置定时器
         self.timer.timeout.connect(self.update_animation)
         self.timer.setInterval(10)  # 10ms更新一次
+        # 设置重置定时器
+        self.reset_timer.timeout.connect(self._auto_reset_to_ready)
+        self.reset_timer.setSingleShot(True)  # 单次触发
 
     def start(self, message, color_start, color_end=None):
         """开始状态动画
-
         Args:
             message: 要显示的状态消息
             color_start: 起始颜色
-            color_end: 结束颜色，如不指定则使用起始颜色
+            color_end: 结束颜色,如不指定则使用起始颜色
         """
         self.message = message
         self.label.setText(message)
-
         # 设置颜色
         if not color_end:
             color_end = color_start
         self.current_colors = (color_start, color_end)
-
         # 重置动画参数
         self.animation_pos = 0
         self.direction = 1
-
         # 应用初始渐变
         self._update_gradient()
-
         # 启动定时器
         if not self.timer.isActive():
             self.timer.start()
+        # 停止任何之前的重置定时器
+        if self.reset_timer.isActive():
+            self.reset_timer.stop()
 
     def stop(self):
         """停止动画"""
         if self.timer.isActive():
             self.timer.stop()
+        # 设置为灰色而不是白色
+        self.set_static_color("已停止", "#808080")  # 使用灰色
+        # 启动重置定时器
+        self.reset_timer.start(3000)  # 3秒后重置为就绪状态
 
-        # 恢复默认样式
-        self.label.setStyleSheet(STATUS_BAR_STYLE)
+    def _auto_reset_to_ready(self):
+        """自动重置为就绪状态"""
+        self.set_static_color("就绪", "#2196F3")  # 使用info蓝色
 
     def update_animation(self):
         """更新动画状态"""
         # 更新位置
-        self.animation_pos += (self.direction * 5)  # 每步移动5个单位
-
-        # 检查边界并反转方向
-        if self.animation_pos >= 1000:
+        self.animation_pos += (self.direction * 1)  # 每步移动1个单位
+        # 检查边界并重置方向
+        if self.animation_pos >= 100:
             self.animation_pos = 0
-            self.direction = -1
+            # self.direction = -1
         elif self.animation_pos <= 0:
             self.animation_pos = 0
             self.direction = 1
-
         # 更新渐变效果
         self._update_gradient()
 
     def set_static_color(self, message, color):
         """设置静态颜色状态 - 不使用动画
-
         Args:
             message: 要显示的状态消息
             color: 要应用的颜色
         """
         self.message = message
         self.label.setText(message)
-
         # 停止任何正在运行的动画
         if self.timer.isActive():
             self.timer.stop()
-
         # 应用静态颜色样式
         static_style = f"""
             background-color: {color};
@@ -746,9 +746,8 @@ class StatusAnimator:
         """更新标签的渐变背景"""
         if not self.current_colors:
             return
-
         color1, color2 = self.current_colors
-        pos = self.animation_pos / 1000.0  # 转换为0-1范围
+        pos = self.animation_pos / 100.0  # 转换为0-1范围
 
         # 确保所有 stop 位置在 0.0 到 1.0 之间
         stop0 = max(0.0, pos - 0.1)
@@ -772,7 +771,6 @@ class StatusAnimator:
             font-weight: bold;
             margin: 2px;
         """
-
         self.label.setStyleSheet(gradient_style)
 
 
