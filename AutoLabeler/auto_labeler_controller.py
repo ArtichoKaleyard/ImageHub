@@ -197,6 +197,12 @@ class AutoLabelerController:
             # 键盘命令连接
             self.model.send_key_signal.connect(self._send_key_event)
 
+            # 连接点击检测延迟设置
+            if hasattr(self.view, 'click_delay_spin'):
+                self.view.click_delay_spin.valueChanged.connect(
+                    lambda ms: self.model.set_delay_click_detection(ms)
+                )
+
     def _send_key_event(self, key):
         """
         发送键盘事件

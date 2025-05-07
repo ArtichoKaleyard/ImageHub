@@ -262,6 +262,21 @@ class AutoLabelerView(QWidget):
         delay_layout.addWidget(next_delay_label)
         delay_layout.addWidget(self.next_delay_spin)
 
+        # 点击检测延迟设置 - 新增
+        click_delay_layout = QHBoxLayout()
+        click_delay_label = QLabel("点击检测延迟:")
+        click_delay_label.setStyleSheet(get_style('LABEL_STYLE'))
+
+        self.click_delay_spin = QSpinBox()
+        self.click_delay_spin.setStyleSheet(get_style('INPUT_STYLE'))
+        self.click_delay_spin.setRange(100, 1000)
+        self.click_delay_spin.setSingleStep(50)
+        self.click_delay_spin.setValue(200)
+        self.click_delay_spin.setSuffix(" ms")
+
+        click_delay_layout.addWidget(click_delay_label)
+        click_delay_layout.addWidget(self.click_delay_spin)
+
         # 快捷键设置 - 两两一行
         shortcut_layout = QHBoxLayout()
 
@@ -287,6 +302,7 @@ class AutoLabelerView(QWidget):
         # 添加到控制面板
         control_layout.addLayout(mode_layout)
         control_layout.addLayout(delay_layout)
+        control_layout.addLayout(click_delay_layout)  # 新增
         control_layout.addLayout(shortcut_layout)
         control_layout.addStretch(1)  # 填充剩余空间
 
@@ -400,6 +416,9 @@ class AutoLabelerView(QWidget):
         self.mode_combo.currentIndexChanged.connect(self.mode_changed_signal.emit)
         self.draw_delay_spin.valueChanged.connect(self.delay_draw_changed_signal.emit)
         self.next_delay_spin.valueChanged.connect(self.delay_next_changed_signal.emit)
+        self.click_delay_spin.valueChanged.connect(
+            lambda ms: self.model.set_delay_click_detection(ms)
+        )
 
         # 连接模型信号
         self.model.state_changed.connect(self.update_state)

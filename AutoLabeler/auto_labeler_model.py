@@ -50,10 +50,12 @@ class AutoLabelerModel(QObject):
         self._mode = AutoLabelerMode.DRAW_ONLY
         self._delay_draw = 300  # 绘制后等待时间(毫秒)
         self._delay_next = 500  # 下一张等待时间(毫秒)
+        self._delay_click_detection = 200  # 点击检测延迟(毫秒)
 
         # 鼠标事件相关
         self._mouse_pressed = False
-        self._last_release_time = 0
+        self._press_time = 0  # 记录鼠标按下的时间戳
+        self._release_time = 0  # 记录鼠标释放的时间戳
         self._draw_detected = False
 
         # 统计数据
@@ -106,6 +108,11 @@ class AutoLabelerModel(QObject):
     def delay_next(self):
         """获取下一张延迟时间"""
         return self._delay_next
+
+    @property
+    def delay_click_detection(self):
+        """获取点击检测延迟时间"""
+        return self._delay_click_detection
 
     @property
     def statistics(self):
@@ -212,6 +219,10 @@ class AutoLabelerModel(QObject):
         """设置下一张延迟时间"""
         self._delay_next = max(100, min(2000, ms))
 
+    def set_delay_click_detection(self, ms):
+        """设置点击检测延迟时间"""
+        self._delay_click_detection = max(100, min(1000, ms))  # 限制在100ms到1000ms之间
+
     def handle_mouse_press(self, event: QMouseEvent):
         """处理鼠标按下事件"""
         if self._state != AutoLabelerState.MONITORING:
@@ -220,6 +231,7 @@ class AutoLabelerModel(QObject):
         try:
             if event.button() == Qt.MouseButton.LeftButton:
                 self._mouse_pressed = True
+                self._press_time = time.time()  # 记录按下时间
                 self._state = AutoLabelerState.DRAWING
                 self.state_changed.emit(self._state)
         except Exception as e:
@@ -233,22 +245,32 @@ class AutoLabelerModel(QObject):
         try:
             if event.button() == Qt.MouseButton.LeftButton and self._mouse_pressed:
                 self._mouse_pressed = False
-                self._last_release_time = time.time()
-                self._draw_detected = True
+                self._release_time = time.time()  # 记录释放时间
+                click_duration = (self._release_time - self._press_time) * 1000  # 转换为毫秒
 
-                # 延迟一段时间后发送自动绘制快捷键
-                self._auto_draw_timer.start(self._delay_draw)
+                # 如果点击时间超过设定的延迟时间，则视为有效绘制
+                if click_duration >= self._delay_click_detection:
+                    self._draw_detected = True
+                    self._auto_draw_timer.start(self._delay_draw)
 
-                # 更新统计
-                self._stats['total_boxes'] += 1
-                self._stats['session_boxes'] += 1
-                self.statistics_updated.emit(self.statistics)
+                    # 更新统计
+                    self._stats['total_boxes'] += 1
+                    self._stats['session_boxes'] += 1
+                    self.statistics_updated.emit(self.statistics)
 
+                    self.status_changed.emit("检测到框绘制完成", "info")
+                else:
+                    self.logger.debug(f"点击时间过短（{click_duration:.0f}ms < {self._delay_click_detection}ms），忽略")
+
+                # 无论是否满足条件，都退出"绘制中"状态
                 self._state = AutoLabelerState.MONITORING
                 self.state_changed.emit(self._state)
-                self.status_changed.emit("检测到框绘制完成", "info")
+
         except Exception as e:
             self.logger.error(f"处理鼠标释放事件出错: {e}")
+            # 发生异常时也确保退出"绘制中"状态
+            self._state = AutoLabelerState.MONITORING
+            self.state_changed.emit(self._state)
 
     def handle_key_press(self, event: QKeyEvent):
         """处理键盘按键事件(用于捕获和计数D键)"""
