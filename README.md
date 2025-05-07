@@ -167,6 +167,23 @@ python main.py
 
 ![image](https://github.com/user-attachments/assets/923b70dc-1d09-432a-88e8-127f286ada65)
 
+### 标注加速器使用
+
+1. 设置操作模式（默认仅自动绘制）
+   - 仅自动绘制
+   - 绘制并下一张
+3. 调整绘制参数（可选）：
+   - 绘制延迟
+   - 下一张延迟
+   - 点击检测延迟
+   - 绘制快捷键
+   - 下一张快捷键
+4. 点击"开始监控"
+5. 开始在标注工具绘制锚框
+6. 程序会自动处理并显示结果
+
+![image](https://github.com/user-attachments/assets/f7c5a173-b97c-4712-a294-485c520eef30)
+
 ## 项目结构
 
 ```
