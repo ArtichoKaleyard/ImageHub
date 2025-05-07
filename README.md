@@ -1,6 +1,6 @@
 # ImageHub - 图像处理工具集
 
-ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个实用的图像处理功能模块。目前包含图像缩放器和自动重命名两个主要功能。
+ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个实用的图像处理功能模块。目前包含图像缩放器、自动重命名和自动标注辅助工具三个主要功能。
 
 ## 功能特点
 
@@ -28,6 +28,14 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 - 详细的验证报告
 - JSON配置支持
 
+### 4. 自动标注辅助工具（新增）
+- 支持两种标注模式：仅自动绘制、绘制并下一张
+- 可自定义绘制延迟和下一张延迟时间
+- 实时统计绘制框数和处理图片数
+- 支持快捷键自定义
+- 状态动画和颜色标记
+- 详细的日志记录功能
+
 ## 技术特性
 
 - 现代化UI设计
@@ -49,16 +57,21 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
    - clipboard_image_scaler_core.py: 核心功能实现，包含图像处理逻辑
    - clipboard_image_scaler_gui.py: 图形界面实现，处理用户交互
 
-3. **配置模块**
+3. **自动标注辅助工具模块（新增）**
+   - auto_labeler_model.py: 核心逻辑和状态管理
+   - auto_labeler_view.py: 图形用户界面
+   - auto_labeler_controller.py: 控制器层，处理用户交互
+
+4. **配置模块**
    - config.py: 包含主题设置、样式定义和动画配置
 
-4. **图像处理验证器模块**
+5. **图像处理验证器模块**
    - image_verifier_gui.py: 验证器GUI实现
    - image_verifier_adapter.py: 验证器中间层实现
    - image_verifier_core.py: 验证器核心实现
    - help.html: 配置说明文档
 
-5. **资源目录**
+6. **资源目录**
    - icons: 存放UI所需的图标资源
 
 ### 功能模块划分：
@@ -90,6 +103,7 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 - Win32clipboard (Windows平台)
 - Watchdog 6.0+
 - Pillow (PIL)
+- pynput (可选，用于全局快捷键支持)
 
 ## 安装说明
 
@@ -164,20 +178,39 @@ ImageHub/
 │   ├── style_interface.py # 样式接口
 │   └── IPV_config.json    # 验证器配置
 │
-├── ClipboardImageScaler/   # 图像缩放器模块
-│   ├── clipboard_image_scaler_gui.py # 图像缩放器GUI
-│   └── clipboard_image_scaler_core.py  # 图像缩放器核心
+├── AutoLabeler/            # 自动标注辅助工具模块
+│   ├── auto_labeler_model.py  # 模型层(状态管理/核心逻辑)
+│   ├── auto_labeler_view.py   # 视图层(图形界面)
+│   └── auto_labeler_controller.py # 控制器层(事件处理)
 │
-├── AutoRename/            # 图片重命名模块
-│   └── auto_rename_gui.py # 图片重命名模块
+├── ClipboardImageScaler/   # 剪贴板图片缩放模块
+│   ├── clipboard_image_scaler_gui.py # 图形界面
+│   └── clipboard_image_scaler_core.py # 核心功能
+│
+├── AutoRename/            # 图片自动重命名模块
+│   └── auto_rename_gui.py # 图形界面
 │
 ├── ImageProcessingValidator/ # 图像处理验证器
 │   ├── image_verifier_gui.py # 图形界面层
-│   ├── image_verifier_adapter.py # 适配器层（GUI/CLI双模式）
+│   ├── image_verifier_adapter.py # 适配器层(GUI/CLI双模式)
 │   ├── image_verifier_core.py # 核心验证逻辑
-│   └── help.html            # 可交互式帮助文档
+│   └── help.html          # 可交互式帮助文档
 │
-└── icons/                 # 图标资源目录
+├── Logger/                # 日志系统
+│   └── logger.py          # 日志记录器实现
+│
+├── style/                 # 样式资源
+│   ├── style_config.py    # 样式配置
+│   ├── log_style.py       # 日志样式定义
+│   └── style_usage_example.py # 样式使用示例
+│
+├── icons/                 # 图标资源目录
+│   ├── app_icon.png       # 应用图标
+│   ├── dark/              # 深色主题图标
+│   └── light/             # 浅色主题图标
+│
+├── requirements.txt       # Python依赖
+└── environment.yml        # Conda环境配置
 ```
 
 ## 贡献指南
@@ -194,6 +227,7 @@ ImageHub/
 - [ ] 更多图像处理算法
 - [ ] 自定义预设配置
 - [ ] 处理历史记录
+- [ ] 自动标注工具的更多模式支持
 
 ## 版权和许可
 
