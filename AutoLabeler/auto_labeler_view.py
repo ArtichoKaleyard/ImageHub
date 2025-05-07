@@ -76,6 +76,12 @@ except ImportError:
             self.timer.stop()
             self.label.setStyleSheet("QLabel { color: #333; }")
 
+        # 添加缺失的set_static_color方法
+        def set_static_color(self, text, color):
+            self.label.setText(text)
+            self.label.setStyleSheet(f"QLabel {{ color: {color}; font-weight: bold; }}")
+            self.timer.stop()  # 确保定时器停止
+
 
 class AutoLabelerView(QWidget):
     """自动标注工具视图类"""
@@ -107,8 +113,17 @@ class AutoLabelerView(QWidget):
         self._init_ui()
         self._setup_connections()
 
-        # 状态动画器 - 使用白底黑字样式确保状态文本可见
+        # 状态动画器初始化
         self.status_animator = StatusAnimator(self.status_label)
+
+        # 设置初始静态颜色 - 确保无论是否导入样式都执行
+        try:
+            # 尝试使用get_theme函数
+            info_color = get_theme('info')
+            self.status_animator.set_static_color("就绪", info_color)
+        except (AttributeError, NameError):
+            # 如果失败，使用默认蓝色
+            self.status_animator.set_static_color("就绪", "#2196F3")
 
         # 统计更新定时器
         self.stats_timer = QTimer()
@@ -447,40 +462,63 @@ class AutoLabelerView(QWidget):
             self.pause_button.setEnabled(False)
             self.pause_button.setText("暂停")
             self.stop_button.setEnabled(False)
+            # 更新状态栏为就绪
+            self.update_status("就绪", "info")
         elif state == AutoLabelerState.MONITORING:
             self.start_button.setEnabled(False)
             self.pause_button.setEnabled(True)
             self.pause_button.setText("暂停")
             self.stop_button.setEnabled(True)
+            # 更新状态栏为监控中
+            self.update_status("监控中", "success")
         elif state == AutoLabelerState.DRAWING:
-            # 绘制状态不改变按钮状态
-            pass
+            # 绘制状态不改变按钮状态，但更新状态栏
+            self.update_status("绘制中", "info")
         elif state == AutoLabelerState.PAUSED:
             self.start_button.setEnabled(False)
             self.pause_button.setEnabled(True)
             self.pause_button.setText("继续")
             self.stop_button.setEnabled(True)
+            # 更新状态栏为已暂停
+            self.update_status("已暂停", "warning")
 
     def update_status(self, message, status_type="normal"):
         """更新状态信息"""
         if not message:
-            self.status_animator.stop()
-            self.status_label.setText("就绪")
+            # 重置为就绪状态
+            try:
+                info_color = get_theme('info')
+                self.status_animator.set_static_color("就绪", info_color)
+            except (AttributeError, NameError):
+                self.status_animator.set_static_color("就绪", "#2196F3")
             return
 
-        # 根据状态类型显示不同颜色
-        if status_type == "success":
-            color = get_theme("success")
-        elif status_type == "warning":
-            color = get_theme("warning")
-        elif status_type == "error":
-            color = get_theme("error")
-        elif status_type == "info":
-            color = get_theme("info")
-        else:
-            color = get_theme("text")
+        # 根据状态类型确定颜色
+        try:
+            if status_type == "success":
+                color = get_theme("success")
+            elif status_type == "warning":
+                color = get_theme("warning")
+            elif status_type == "error":
+                color = get_theme("error")
+            elif status_type == "info":
+                color = get_theme("info")
+            else:
+                color = get_theme("text")
+        except (AttributeError, NameError):
+            # 备用颜色方案
+            if status_type == "success":
+                color = "#4CAF50"
+            elif status_type == "warning":
+                color = "#FF9800"
+            elif status_type == "error":
+                color = "#F44336"
+            elif status_type == "info":
+                color = "#2196F3"
+            else:
+                color = "#333333"
 
-        # 启动状态动画
+        # 启动状态动画/静态颜色
         self.status_animator.start(message, color)
 
         # 根据状态类型记录对应级别的日志

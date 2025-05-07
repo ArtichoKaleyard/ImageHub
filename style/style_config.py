@@ -30,7 +30,7 @@ def is_dark_mode():
 
 
 # 应用程序标题
-APP_TITLE = "粘贴板图像自动缩放器"
+APP_TITLE = "应用程序标题"
 
 # 窗口初始大小
 WINDOW_WIDTH = 900
