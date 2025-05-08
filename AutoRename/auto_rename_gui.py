@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 from queue import Queue
-
+from win10toast import ToastNotifier
 from PyQt6 import QtCore, QtGui
 from PyQt6.QtCore import pyqtSignal, QTimer
 from PyQt6.QtWidgets import (
@@ -19,6 +19,7 @@ from watchdog.observers import Observer
 
 from style.style_config import APP_STYLE, PRIMARY_BUTTON_STYLE, SECONDARY_BUTTON_STYLE, GROUP_BOX_STYLE, INPUT_STYLE, \
     STATUS_BAR_STYLE, THEME
+from utils.windows_notification import notification
 
 """
 图片自动重命名工具 GUI 版本
@@ -90,64 +91,41 @@ def format_tag(tag):
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
     return f"[{padded_tag}] [{current_time}]"
 
+class SafeToastNotifier(ToastNotifier):
+    """修复WNDPROC返回类型错误的Toast通知器"""
+
+    def __init__(self):
+        super().__init__()
+        # 强制设置消息处理超时
+        self._timeout = 5  # 秒
+
+    def on_destroy(self, hwnd, msg, wparam, lparam):
+        """修复返回类型必须为int的问题"""
+        try:
+            super().on_destroy(hwnd, msg, wparam, lparam)
+        finally:
+            return 0  # 必须明确返回整数
+
 
 def show_windows_notification(title, message, duration=5):
-    """
-    显示Windows系统通知
+    """线程安全的通知显示方法"""
 
-    参数:
-        title (str): 通知标题
-        message (str): 通知内容
-        duration (int): 通知持续时间(秒)
-    """
+    def _show():
+        try:
+            # 使用修复后的通知器
+            toaster = SafeToastNotifier()
+            # 使用同步显示模式避免线程冲突
+            toaster.show_toast(
+                title,
+                message,
+                duration=duration,
+                threaded=False  # 关键参数！
+            )
+        except Exception as e:
+            print(f"[通知异常] {str(e)}")
 
-    def run_toast_in_subprocess():
-        # 创建一个临时Python脚本用于显示通知
-        temp_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_toast.py")
-        with open(temp_script, "w", encoding="utf-8") as f:
-            f.write('''
-import sys
-from win10toast import ToastNotifier
-
-title = sys.argv[1]
-message = sys.argv[2]
-try:
-    duration = int(sys.argv[3])
-except IndexError:
-    duration = 5  # 默认值
-
-# 重定向标准输出和错误输出到null设备
-import os
-null_device = open(os.devnull, 'w')
-sys.stdout = null_device
-sys.stderr = null_device
-
-# 显示通知
-toaster = ToastNotifier()
-toaster.show_toast(
-    title, 
-    message,
-    duration=duration,
-    threaded=False
-)
-            ''')
-
-        # 运行脚本并隐藏输出
-        os.system(f'start /B "" python "{temp_script}" "{title}" "{message}" >nul 2>&1')
-
-        # 等待一段时间后删除临时脚本
-        def delete_temp_file():
-            time.sleep(5)
-            try:
-                if os.path.exists(temp_script):
-                    os.remove(temp_script)
-            except:
-                pass
-
-        threading.Thread(target=delete_temp_file, daemon=True).start()
-
-    # 使用单独进程运行通知
-    run_toast_in_subprocess()
+    # 在独立线程中运行
+    threading.Thread(target=_show, daemon=True).start()
 
 
 class ImageRenamer(FileSystemEventHandler):
@@ -494,7 +472,7 @@ class ImageRenamerGUI(QWidget):
 
     def show_notification_in_main_thread(self, title, message):
         """在主线程中显示通知"""
-        show_windows_notification(title, message)
+        notification(title, message)
 
     def select_font(self):
         """打开字体选择对话框，允许用户自定义日志字体"""

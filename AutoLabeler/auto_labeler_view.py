@@ -21,7 +21,7 @@ from PyQt6.QtCore import pyqtSignal, QTimer, Qt
 from AutoLabeler.auto_labeler_model import AutoLabelerModel, AutoLabelerMode, AutoLabelerState
 
 # 导入新的日志记录器
-from Logger.logger import Logger
+from utils.logger import Logger
 
 # 导入样式接口
 try:
@@ -100,7 +100,7 @@ class AutoLabelerView(QWidget):
         self.setWindowTitle("自动标注辅助工具")
         self.resize(650, 500)  # 调整窗口大小以适应新布局
 
-        # 使用 Logger 类
+        # 使用 utils 类
         self.logger = Logger(log_to_console=True, log_to_gui=True)
 
         # 兼容旧代码的 logger 接口

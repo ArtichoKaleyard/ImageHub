@@ -3,26 +3,26 @@
 支持GUI和控制台日志输出，基于统一样式接口实现样式。
 
 使用方法:
-    from config.Logger import Logger
+    from config.utils import utils
 
     # 创建日志记录器
-    Logger = Logger(log_to_console=True)
+    utils = utils(log_to_console=True)
 
     # 添加GUI日志区域 (QTextEdit)
-    Logger.set_gui_log_widget(log_text_edit)
+    utils.set_gui_log_widget(log_text_edit)
 
     # 记录不同级别的日志
-    Logger.info("应用程序已启动")
-    Logger.success("操作完成")
-    Logger.warning("文件已存在，将被覆盖")
-    Logger.error("无法连接到服务器")
-    Logger.debug("变量x的值为: 42")
+    utils.info("应用程序已启动")
+    utils.success("操作完成")
+    utils.warning("文件已存在，将被覆盖")
+    utils.error("无法连接到服务器")
+    utils.debug("变量x的值为: 42")
 
     # 仅发送到控制台
-    Logger.console_only().info("这条信息只会在控制台显示")
+    utils.console_only().info("这条信息只会在控制台显示")
 
     # 仅发送到GUI
-    Logger.gui_only().info("这条信息只会在GUI中显示")
+    utils.gui_only().info("这条信息只会在GUI中显示")
 """
 import datetime
 from style.style_interface import format_console_log, format_log_html

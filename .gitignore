@@ -1,3 +1,7 @@
 /.idea/
 /modern_style.py
 /test.py
+/dist/
+/build/
+/main.spec
+/ImageHub.spec

@@ -138,8 +138,8 @@ class AutoLabelerController:
         """
         初始化控制器
         """
-        # 使用 Logger 类
-        from Logger.logger import Logger
+        # 使用 utils 类
+        from utils.logger import Logger
         self.logger = Logger(log_to_console=True, log_to_gui=True)
 
         # 连接模型和视图
