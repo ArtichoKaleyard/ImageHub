@@ -9,6 +9,7 @@
 """
 from win10toast import ToastNotifier
 import threading
+import pythoncom
 
 class SafeToastNotifier(ToastNotifier):
     """修复WNDPROC返回类型错误的Toast通知器"""
@@ -25,6 +26,7 @@ class SafeToastNotifier(ToastNotifier):
 def notification(title, message, duration=5):
     """线程安全的通知显示方法"""
     def _show():
+        pythoncom.CoInitialize()  # 初始化COM
         try:
             # 使用修复后的通知器
             toaster = SafeToastNotifier()
@@ -33,9 +35,12 @@ def notification(title, message, duration=5):
                 title,
                 message,
                 duration=duration,
-                threaded=False  # 关键参数！
+                threaded=False,
+                icon_path='icons\\ImageHub.ico'
             )
         except Exception as e:
             print(f"[通知异常] {str(e)}")
+        finally:
+            pythoncom.CoUninitialize()  # 清理COM
     # 在独立线程中运行
     threading.Thread(target=_show, daemon=True).start()
