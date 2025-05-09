@@ -229,6 +229,7 @@ class AutoLabelerView(QWidget):
         self.mode_combo = QComboBox()
         self.mode_combo.setStyleSheet(get_style('COMBO_BOX_STYLE'))
         self.mode_combo.addItem("仅自动绘制 (W)")
+        self.mode_combo.addItem("仅自动跳转下一张 (D)")
         self.mode_combo.addItem("绘制并下一张 (W+D)")
 
         mode_layout.addWidget(mode_label)
@@ -438,6 +439,8 @@ class AutoLabelerView(QWidget):
         if index == 0:
             self.model.set_mode(AutoLabelerMode.DRAW_ONLY)
         elif index == 1:
+            self.model.set_mode(AutoLabelerMode.NEXT_ONLY)
+        elif index == 2:
             self.model.set_mode(AutoLabelerMode.DRAW_AND_NEXT)
 
     def _on_start_clicked(self):

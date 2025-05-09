@@ -19,7 +19,8 @@ from PyQt6.QtCore import Qt
 class AutoLabelerMode(Enum):
     """自动标注模式枚举"""
     DRAW_ONLY = 0  # 仅自动开启绘制模式
-    DRAW_AND_NEXT = 1  # 绘制完成后自动进入下一张
+    NEXT_ONLY = 1  # 仅自动跳转下一张
+    DRAW_AND_NEXT = 2  # 绘制完成后自动进入下一张
 
 
 class AutoLabelerState(Enum):
@@ -213,7 +214,7 @@ class AutoLabelerModel(QObject):
         if isinstance(mode, AutoLabelerMode):
             self._mode = mode
 
-            mode_str = "仅自动绘制" if mode == AutoLabelerMode.DRAW_ONLY else "绘制并下一张"
+            mode_str = "仅自动绘制" if mode == AutoLabelerMode.DRAW_ONLY else "仅自动跳转下一张" if mode == AutoLabelerMode.NEXT_ONLY else "绘制并下一张"
             self.status_changed.emit(f"标注模式: {mode_str}", "info")
 
     def set_delay_draw(self, ms):
@@ -291,9 +292,15 @@ class AutoLabelerModel(QObject):
     def _send_draw_key(self):
         """发送W键以开启绘制模式"""
         if self._state == AutoLabelerState.MONITORING and self._draw_detected:
-            self.status_changed.emit("自动发送绘制快捷键", "info")
+            # 如果是仅跳转下一张模式，直接发送D键
+            if self._mode == AutoLabelerMode.NEXT_ONLY:
+                self._auto_next_timer.start(self._delay_next)
+                self._draw_detected = False
+                self._reset_state_timer.start(500)
+                return
 
-            # 通知控制器发送W键
+            # 其他模式发送W键
+            self.status_changed.emit("自动发送绘制快捷键", "info")
             self.send_key_signal.emit("W")
 
             # 如果是绘制并下一张模式，则启动下一张定时器
@@ -301,8 +308,6 @@ class AutoLabelerModel(QObject):
                 self._auto_next_timer.start(self._delay_next)
 
             self._draw_detected = False
-
-            # 缩短延迟时间并直接触发状态恢复
             self._reset_state_timer.start(500)  # 0.5秒后切换
 
     def _send_next_key(self):
