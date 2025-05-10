@@ -3,27 +3,25 @@
 支持GUI和控制台日志输出，基于统一样式接口实现样式。
 
 使用方法:
-    from config.utils import utils
+    from utils.logger import Logger
 
     # 创建日志记录器
-    utils = utils(log_to_console=True)
+    logger = Logger(log_to_console=True, level="info")
+
+    # 设置日志级别
+    logger.set_level("debug")  # 可选: debug, info, warning, error
 
     # 添加GUI日志区域 (QTextEdit)
-    utils.set_gui_log_widget(log_text_edit)
+    logger.set_gui_log_widget(log_text_edit)
 
     # 记录不同级别的日志
-    utils.info("应用程序已启动")
-    utils.success("操作完成")
-    utils.warning("文件已存在，将被覆盖")
-    utils.error("无法连接到服务器")
-    utils.debug("变量x的值为: 42")
-
-    # 仅发送到控制台
-    utils.console_only().info("这条信息只会在控制台显示")
-
-    # 仅发送到GUI
-    utils.gui_only().info("这条信息只会在GUI中显示")
+    logger.info("应用程序已启动")
+    logger.success("操作完成")
+    logger.warning("文件已存在，将被覆盖")
+    logger.error("无法连接到服务器")
+    logger.debug("变量x的值为: 42")
 """
+
 import datetime
 from style.style_interface import format_console_log, format_log_html
 
@@ -31,13 +29,23 @@ from style.style_interface import format_console_log, format_log_html
 class Logger:
     """日志记录器，支持控制台和GUI日志输出"""
 
-    def __init__(self, log_to_console: bool = True, log_to_gui: bool = True):
+    # 日志级别对应数值，用于比较
+    LEVELS = {
+        "debug": 10,
+        "info": 20,
+        "success": 25,
+        "warning": 30,
+        "error": 40
+    }
+
+    def __init__(self, log_to_console: bool = True, log_to_gui: bool = True, level: str = "info"):
         """
         初始化日志记录器
 
         Args:
             log_to_console: 是否输出到控制台
             log_to_gui: 是否输出到GUI
+            level: 日志级别，可选 debug, info, success, warning, error
         """
         self._log_to_console = log_to_console
         self._log_to_gui = log_to_gui
@@ -45,6 +53,22 @@ class Logger:
         # 临时设置状态
         self._temp_log_to_console = None
         self._temp_log_to_gui = None
+        self._level = self.LEVELS.get(level.lower(), self.LEVELS["info"])
+
+    def set_level(self, level: str):
+        """设置日志级别"""
+        level_value = self.LEVELS.get(level.lower())
+        if level_value is None:
+            raise ValueError(f"不支持的日志级别: {level}. 可选值: {list(self.LEVELS.keys())}")
+        self._level = level_value
+        return self
+
+    def get_level(self) -> str:
+        """获取当前日志级别"""
+        for name, value in self.LEVELS.items():
+            if value == self._level:
+                return name
+        return "info"
 
     def set_gui_log_widget(self, text_edit):
         """
@@ -79,6 +103,13 @@ class Logger:
             message: 日志消息
             level: 日志级别
         """
+        level = level.lower()
+        level_value = self.LEVELS.get(level, self.LEVELS["info"])
+
+        # 如果当前日志级别高于设定级别，则不输出
+        if level_value < self._level:
+            return
+
         # 确定当前的输出目标
         to_console = self._temp_log_to_console if self._temp_log_to_console is not None else self._log_to_console
         to_gui = self._temp_log_to_gui if self._temp_log_to_gui is not None else self._log_to_gui
@@ -137,14 +168,14 @@ class Logger:
         return self
 
 
-# 创建一个默认的全局日志记录器实例
-default_logger = Logger()
+# 创建一个默认的全局日志记录器实例（默认只输出 info 及以上）
+default_logger = Logger(level="info")
 
 
 # 测试代码
 def test_logger():
     """测试日志记录器"""
-    logger = Logger()
+    logger = Logger(level="debug")  # 调试模式，显示所有日志
 
     # 测试不同级别的日志
     logger.info("这是一条信息日志")
