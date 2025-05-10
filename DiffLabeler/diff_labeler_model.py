@@ -441,9 +441,10 @@ class DiffLabelerModel:
         # 没有找到匹配
         return None
 
-    def batch_process(self) -> Tuple[int, int, List[str]]:
+    def batch_process(self, progress_callback=None) -> Tuple[int, int, List[str]]:
         """
         批量处理所有样本图，以样本图为核心逐个处理
+            :param progress_callback:
 
         Returns:
             processed: 成功处理的图片数
@@ -472,9 +473,10 @@ class DiffLabelerModel:
         processed = 0
         failed = 0
         errors = []
+        total = len(sample_files)
 
         # 根据样本图逐个处理
-        for sample_file in sample_files:
+        for idx, sample_file in enumerate(sample_files):
             # 寻找匹配的背景图
             bg_match = self.find_matching_bg(sample_file, bg_files)
 
@@ -498,6 +500,10 @@ class DiffLabelerModel:
                 error_msg = f"没有可用的背景图匹配: {sample_file}"
                 errors.append(error_msg)
                 logger.error(error_msg)
+
+            if progress_callback:
+                progress = int((idx + 1) / total * 100)
+                progress_callback(progress)
 
         return processed, failed, errors
 
@@ -582,9 +588,10 @@ class DiffLabelerModel:
 
         return processed, failed, errors
 
-    def batch_process_by_sequence(self) -> Tuple[int, int, List[str]]:
+    def batch_process_by_sequence(self, progress_callback=None) -> Tuple[int, int, List[str]]:
         """
         按序列批量处理样本图，以一对多关系处理差分
+            :param progress_callback:
 
         Returns:
             processed: 成功处理的图片数
@@ -604,6 +611,8 @@ class DiffLabelerModel:
         total_processed = 0
         total_failed = 0
         total_errors = []
+        total_sequences = len(sequences)
+        sequences_processed = 0
 
         # 处理每个序列
         for base_name, sample_files in sequences.items():
@@ -613,5 +622,10 @@ class DiffLabelerModel:
             total_processed += processed
             total_failed += failed
             total_errors.extend(errors)
+
+            sequences_processed += 1
+            if progress_callback:
+                progress = int(sequences_processed / total_sequences * 100)
+                progress_callback(progress)
 
         return total_processed, total_failed, total_errors

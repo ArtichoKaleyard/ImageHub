@@ -36,19 +36,19 @@ class ImagePreviewWidget(QWidget):
 
     def init_ui(self):
         """初始化UI"""
-        # 主布局使用水平布局，固定比例3:7
+        # 主布局使用水平布局，固定比例1:3
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(10)
 
-        # 左侧面板：小图预览 (30%)
+        # 左侧面板：小图预览 (25%)
         left_panel = QWidget()
         left_panel.setMinimumWidth(200)  # 设置合理的最小宽度
         left_layout = QVBoxLayout(left_panel)
         left_layout.setSpacing(10)
         left_layout.setContentsMargins(0, 0, 0, 0)  # 清除内部边距
 
-        # 右侧面板：结果图 (70%)
+        # 右侧面板：结果图 (75%)
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(0, 0, 0, 0)  # 清除内部边距
@@ -76,7 +76,7 @@ class ImagePreviewWidget(QWidget):
             self.preview_labels[key] = label
 
         # 结果图
-        result_group = QGroupBox("检测结果（放大）")
+        result_group = QGroupBox("差分标注结果预览")
         result_group.setMinimumSize(400, 300)  # 设置合理的最小尺寸
         result_layout = QVBoxLayout(result_group)
         result_layout.setContentsMargins(0, 0, 0, 0)
@@ -93,8 +93,8 @@ class ImagePreviewWidget(QWidget):
         right_layout.addWidget(result_group)
 
         # 添加到主布局
-        main_layout.addWidget(left_panel, stretch=3)
-        main_layout.addWidget(right_panel, stretch=7)
+        main_layout.addWidget(left_panel, stretch=1)
+        main_layout.addWidget(right_panel, stretch=3)
 
     def resizeEvent(self, event):
         """窗口大小变化时重新缩放图像"""
@@ -405,14 +405,18 @@ class PreviewPanel(QWidget):
         file_layout = QGridLayout(file_group)
 
         # 背景图选择
-        file_layout.addWidget(QLabel("背景图:"), 0, 0)
+        bg_label = QLabel("背景图:")
+        bg_label.setStyleSheet(get_style("LABEL_STYLE"))
+        file_layout.addWidget(bg_label, 0, 0)
         self.bg_combo = QComboBox()
         self.bg_combo.setMinimumWidth(250)
         self.bg_combo.setStyleSheet(get_style("COMBO_BOX_STYLE"))
         file_layout.addWidget(self.bg_combo, 0, 1)
 
         # 样本图选择
-        file_layout.addWidget(QLabel("样本图:"), 1, 0)
+        sample_label = QLabel("样本图:")
+        sample_label.setStyleSheet(get_style("LABEL_STYLE"))
+        file_layout.addWidget(sample_label, 1, 0)
         self.sample_combo = QComboBox()
         self.sample_combo.setMinimumWidth(250)
         self.sample_combo.setStyleSheet(get_style("COMBO_BOX_STYLE"))
@@ -426,6 +430,13 @@ class PreviewPanel(QWidget):
         file_layout.addWidget(self.preview_btn, 1, 2)
 
         layout.addWidget(file_group)
+
+        # 创建预览图分组框
+        preview_group = QGroupBox("标注结果预览")
+        preview_group.setStyleSheet(get_style("GROUP_BOX_STYLE"))
+        preview_layout = QVBoxLayout(preview_group)
+        preview_layout.setContentsMargins(5, 5, 5, 5)
+        preview_layout.setSpacing(5)
 
         # 使用QSplitter来更好地管理空间分配
         splitter = QSplitter(Qt.Orientation.Vertical)
@@ -446,7 +457,11 @@ class PreviewPanel(QWidget):
         # 设置splitter手柄不可见，因为我们已经固定了文件选择部分的高度
         splitter.setHandleWidth(0)
 
-        layout.addWidget(splitter, stretch=1)  # 关键：设置拉伸因子为1
+        # 将splitter添加到预览分组框中
+        preview_layout.addWidget(splitter)
+
+        # 将预览分组框添加到主布局
+        layout.addWidget(preview_group, stretch=1)  # 设置拉伸因子为1
 
     def update_bg_files(self, dir_path):
         """更新背景图文件列表"""
@@ -544,7 +559,6 @@ class PreviewPanel(QWidget):
         """清除预览"""
         self.preview_widget.clear_preview()
 
-
 class ProcessPanel(QWidget):
     """处理面板"""
 
@@ -623,7 +637,6 @@ class ProcessPanel(QWidget):
     def set_progress(self, value):
         """设置进度条值"""
         self.progress_bar.setValue(value)
-
 
 class DiffLabelerView(QWidget):
     """差分标注工具的视图"""

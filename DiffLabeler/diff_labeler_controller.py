@@ -36,15 +36,15 @@ class ProcessingWorker(QThread):
         try:
             logger.info("开始批量处理...")
 
-            # 执行批处理
+            def update_progress(progress):
+                self.progress_updated.emit(progress)
+
             if self.by_sequence:
                 logger.info("使用序列模式处理图像...")
-                processed, failed, errors = self.model.batch_process_by_sequence()
+                processed, failed, errors = self.model.batch_process_by_sequence(update_progress)
             else:
                 logger.info("使用标准模式处理图像...")
-                processed, failed, errors = self.model.batch_process()
-
-            # 发出完成信号
+                processed, failed, errors = self.model.batch_process(update_progress)
             self.processing_finished.emit(processed, failed, errors)
 
             # 记录处理日志
@@ -99,7 +99,7 @@ class DiffLabelerController(QObject):
         # 然后保存配置
         success = self.model.save_config(config_path)
         if success:
-            logger.success(f"配置已保存至: {config_path or self.model.config_file}")
+            logger.debug(f"配置已保存至: {config_path or self.model.config_file}")
         else:
             logger.error("配置保存失败")
 
@@ -136,27 +136,30 @@ class DiffLabelerController(QObject):
 
     def _start_processing_task(self, by_sequence: bool = False):
         """通用处理任务启动函数"""
-        # 检查配置
-        config = self.view.get_current_config()
-        if not config["bg_dir"] or not config["sample_dir"] or not config["output_dir"]:
-            logger.error("错误: 请设置所有必要的目录")
-            return
+        try:  # 新增异常捕获
+            # 检查配置
+            config = self.view.get_current_config()
+            if not config["bg_dir"] or not config["sample_dir"] or not config["output_dir"]:
+                logger.error("错误: 请设置所有必要的目录")
+                return
 
-        # 更新模型配置
-        self.model.set_config(config)
+            # 更新模型配置
+            self.model.set_config(config)
 
-        # 创建并启动工作线程
-        self.worker = ProcessingWorker(self.model, by_sequence)
-        self.worker.progress_updated.connect(self.view.set_progress)
-        self.worker.processing_finished.connect(self.on_processing_finished)
+            # 创建并启动工作线程
+            self.worker = ProcessingWorker(self.model, by_sequence)
+            self.worker.progress_updated.connect(self.view.set_progress)
+            self.worker.processing_finished.connect(self.on_processing_finished)
 
-        # 禁用处理按钮
-        self.view.process_button.setEnabled(False)
-        if hasattr(self.view, 'sequence_process_button'):
-            self.view.sequence_process_button.setEnabled(False)
+            # 禁用处理按钮
+            self.view.process_button.setEnabled(False)
+            if hasattr(self.view, 'sequence_process_button'):
+                self.view.sequence_process_button.setEnabled(False)
 
-        # 启动工作线程
-        self.worker.start()
+            # 启动工作线程
+            self.worker.start()
+        except Exception as e:  # 新增
+            logger.critical(f"启动处理任务时发生严重错误: {e}", exc_info=True)
 
     @pyqtSlot(str, str)
     def generate_preview(self, bg_filename: str, sample_filename: str):
