@@ -3,17 +3,19 @@
 """
 import os
 import sys
+import numpy as np
 from PyQt6.QtWidgets import (QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QLineEdit, QPushButton, QSpinBox, QSizePolicy, QDoubleSpinBox,
                              QFileDialog, QTextEdit, QProgressBar, QComboBox, QSplitter,
                              QGroupBox, QScrollArea, QGridLayout, QFrame, QSlider)
-from PyQt6.QtCore import pyqtSignal, QSize, Qt
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QSize, Qt, QThread
 from PyQt6.QtGui import QPixmap, QImage
 from typing import Dict, Optional
-import numpy as np
 
 # 导入自定义日志记录器
-from utils.logger import default_logger as logger
+from utils.logger import Logger
+# 创建视图层日志记录器
+logger = Logger(log_to_console=True, level="info")
 
 # 导入 Model 和 Controller
 from DiffLabeler.diff_labeler_model import DiffLabelerModel
@@ -101,6 +103,14 @@ class ImagePreviewWidget(QWidget):
         super().resizeEvent(event)
         self.rescale_images()
 
+    def closeEvent(self, event):
+        # 请求控制器停止所有工作线程
+        if hasattr(self, 'controller') and self.controller.worker and self.controller.worker.isRunning():
+            self.controller.worker.requestInterruption()
+            self.controller.worker.quit()
+            self.controller.worker.wait()  # 等待线程结束
+        event.accept()
+
     def rescale_images(self):
         """根据当前控件尺寸重新缩放图像"""
         if not all(img is not None for img in self.original_images.values()):
@@ -136,12 +146,20 @@ class ImagePreviewWidget(QWidget):
             self.result_label.setPixmap(scaled)
 
     def _convert_cv_to_qimage(self, cv_img):
-        """将OpenCV图像转换为QImage"""
-        height, width, channel = cv_img.shape
-        bytes_per_line = 3 * width
-        return QImage(cv_img[..., ::-1].copy().data,
-                      width, height, bytes_per_line,
-                      QImage.Format.Format_RGB888)
+        # 确保使用连续内存并复制数据
+        if len(cv_img.shape) == 2:
+            # 单通道图像（如差异图）
+            height, width = cv_img.shape
+            bytes_per_line = width
+            qimg = QImage(cv_img.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
+        else:
+            # 多通道图像（彩色图）
+            height, width, channel = cv_img.shape
+            bytes_per_line = 3 * width
+            # 注意：复制一份图像数据，避免外部数据释放后崩溃
+            qimg = QImage(cv_img.copy().data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+
+        return qimg
 
     def update_preview(self, bg_img, sample_img, diff_img, result_img):
         """更新预览图像"""
@@ -152,6 +170,15 @@ class ImagePreviewWidget(QWidget):
         }
         # 触发一次缩放
         self.rescale_images()
+
+    def clear_preview(self):
+        """清除预览"""
+        self.original_images = {key: None for key in self.original_images}
+        for label in self.preview_labels.values():
+            label.setPixmap(None)
+            label.setText("无预览")
+        self.result_label.setPixmap(None)
+        self.result_label.setText("无预览")
 
 
 class ConfigPanel(QWidget):
@@ -332,16 +359,13 @@ class ConfigPanel(QWidget):
 
         if dialog.exec():
             selected_dir = dialog.selectedFiles()[0]
-
-            # 更新对应的输入框
+            logger.info(f"已选择{dir_type}目录: {selected_dir}")
             if dir_type == "bg_dir":
                 self.bg_dir_edit.setText(selected_dir)
             elif dir_type == "sample_dir":
                 self.sample_dir_edit.setText(selected_dir)
             elif dir_type == "output_dir":
                 self.output_dir_edit.setText(selected_dir)
-
-            # 发出信号
             self.directory_changed.emit(dir_type, selected_dir)
 
     def get_config(self):
@@ -469,12 +493,15 @@ class PreviewPanel(QWidget):
         self.bg_combo.clear()
 
         if os.path.exists(dir_path):
-            for file in os.listdir(dir_path):
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
-                    self.bg_files.append(file)
-
-            self.bg_files.sort()
-            self.bg_combo.addItems(self.bg_files)
+            image_files = [f for f in os.listdir(dir_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            if image_files:
+                self.bg_files = image_files
+                self.bg_combo.addItems(image_files)
+                logger.info(f"已加载{len(image_files)}个背景图文件")
+            else:
+                logger.warning(f"目录中未找到图片文件: {dir_path}")
+        else:
+            logger.error(f"目录不存在: {dir_path}")
 
     def update_sample_files(self, dir_path):
         """更新样本图文件列表"""
@@ -482,24 +509,30 @@ class PreviewPanel(QWidget):
         self.sample_combo.clear()
 
         if os.path.exists(dir_path):
-            for file in os.listdir(dir_path):
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
-                    self.sample_files.append(file)
-
-            self.sample_files.sort()
-            self.sample_combo.addItems(self.sample_files)
+            image_files = [f for f in os.listdir(dir_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            if image_files:
+                self.sample_files = image_files
+                self.sample_combo.addItems(image_files)
+                logger.info(f"已加载{len(image_files)}个样本图文件")
+            else:
+                logger.warning(f"目录中未找到图片文件: {dir_path}")
+        else:
+            logger.error(f"目录不存在: {dir_path}")
 
     def request_preview(self):
         """请求生成预览"""
         if not self.bg_files or not self.sample_files:
-            logger.warning("没有可用的背景图或样本图")
+            logger.warning("无法生成预览：未加载背景图或样本图")
             return
 
         bg_file = self.bg_combo.currentText()
         sample_file = self.sample_combo.currentText()
 
         if bg_file and sample_file:
+            logger.debug(f"请求预览：背景图 {bg_file}, 样本图 {sample_file}")
             self.preview_requested.emit(bg_file, sample_file)
+        else:
+            logger.warning("请先选择背景图和样本图")
 
     def sample_changed(self, index):
         """样本图变更时尝试自动匹配背景图并预览"""
@@ -515,24 +548,12 @@ class PreviewPanel(QWidget):
         logger.debug(f"样本 {sample_file} 的基本名称: {base_name}")
 
         # 尝试匹配背景图
-        matched_index = -1
         for i, bg_file in enumerate(self.bg_files):
-            bg_base = self.extract_base_name(bg_file)
-            # 完全匹配
-            if bg_base == base_name:
-                matched_index = i
-                logger.debug(f"找到完全匹配的背景图: {bg_file}")
+            if base_name in bg_file:
+                logger.debug(f"自动匹配背景图: {bg_file}")
+                self.bg_combo.setCurrentIndex(i)
+                self.request_preview()
                 break
-            # 部分匹配
-            elif bg_base in base_name or base_name in bg_base:
-                matched_index = i
-                logger.debug(f"找到部分匹配的背景图: {bg_file}")
-                break
-
-        # 如果找到匹配的背景图，自动选择并预览
-        if matched_index >= 0:
-            self.bg_combo.setCurrentIndex(matched_index)
-            self.request_preview()
 
     def extract_base_name(self, filename):
         """提取文件的基本名称（移除扩展名和常见后缀）"""
@@ -592,9 +613,17 @@ class ProcessPanel(QWidget):
         self.sequence_process_button.setStyleSheet(get_style("PRIMARY_BUTTON_STYLE"))
         self.sequence_process_button.clicked.connect(self.sequence_process_requested)
 
+        # 停止按钮
+        self.stop_button = QPushButton("停止处理")
+        self.stop_button.setToolTip("终止当前进行的处理任务")
+        self.stop_button.setStyleSheet(get_style("SECONDARY_BUTTON_STYLE"))
+        self.stop_button.clicked.connect(lambda: self.parent().parent().parent().cancel_requested.emit())
+
         mode_layout.addWidget(self.process_button)
         mode_layout.addWidget(self.sequence_process_button)
+        mode_layout.addWidget(self.stop_button)
 
+        mode_group.setLayout(mode_layout)
         layout.addWidget(mode_group)
 
         # 进度组
@@ -615,20 +644,25 @@ class ProcessPanel(QWidget):
         log_group = QGroupBox("处理日志")
         log_group.setStyleSheet(get_style("GROUP_BOX_STYLE"))
         log_group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        log_layout = QVBoxLayout(log_group)
-
-        # 日志文本区域（应用日志样式）
+        log_layout = QVBoxLayout(log_group)        # 日志文本区域（应用日志样式）
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setStyleSheet(get_log_style("LOG_AREA_STYLE"))
         self.log_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.log_text.setMinimumHeight(100)
-
+        
+        # 优化日志显示性能
+        self.log_text.document().setMaximumBlockCount(1000)  # 限制最大行数
+        self.log_text.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)  # 不自动换行
+        # 设置字体
+        font = self.log_text.font()
+        font.setFamily("Consolas")  # 使用等宽字体
+        font.setPointSize(9)
+        self.log_text.setFont(font)
+        
         log_layout.addWidget(self.log_text)
 
-        # 将日志文本框连接到日志记录器
-        logger.set_gui_log_widget(self.log_text)
-
+        log_group.setLayout(log_layout)
         layout.addWidget(log_group, stretch=1)  # 关键：设置拉伸因子
 
         # 添加弹性空间
@@ -637,6 +671,10 @@ class ProcessPanel(QWidget):
     def set_progress(self, value):
         """设置进度条值"""
         self.progress_bar.setValue(value)
+
+        # 如果当前不在处理标签页且进度不为0，自动切换到处理页
+        if value > 0 and value < 100 and self.parent().parent().parent().tab_widget.currentIndex() != 2:  # 处理页索引是2
+            self.parent().parent().parent().tab_widget.setCurrentIndex(2)
 
 class DiffLabelerView(QWidget):
     """差分标注工具的视图"""
@@ -648,20 +686,31 @@ class DiffLabelerView(QWidget):
     preview_requested = pyqtSignal(str, str)
     save_config_requested = pyqtSignal(str)
     load_config_requested = pyqtSignal(str)
+    cancel_requested = pyqtSignal()  # 新增信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("差分标注工具")
-        self.resize(900, 500)
+        
+        # 先创建基础UI（以获取日志控件）
+        self.setup_base_ui()
+        
+        # 设置日志输出到GUI（在创建其他组件之前）
+        logger.set_gui_log_widget(self.process_panel.log_text)
+        logger.info("正在初始化差分标注工具...")
+
         # 初始化模型和控制器
         self.model = DiffLabelerModel()
         self.controller = DiffLabelerController(self.model, self)
-        self.init_ui()
+
+        # 完成剩余UI初始化
+        self.setup_ui_connections()
+
         # 加载默认配置
         self.controller.load_config()
+        logger.success("差分标注工具初始化完成")
 
-    def init_ui(self):
-        """初始化UI"""
+    def setup_base_ui(self):
+        """初始化基础UI，主要是为了获取日志控件"""
         # 创建主布局
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
@@ -684,6 +733,15 @@ class DiffLabelerView(QWidget):
         # 将标签页控件添加到主布局
         main_layout.addWidget(self.tab_widget)
 
+        # 引用处理按钮，以便控制器可以禁用/启用
+        self.process_button = self.process_panel.process_button
+        self.sequence_process_button = self.process_panel.sequence_process_button
+
+        # 应用主样式
+        self.setStyleSheet(get_style("APP_STYLE"))
+
+    def setup_ui_connections(self):
+        """设置UI信号连接"""
         # 连接配置面板信号
         self.config_panel.directory_changed.connect(self.directory_changed)
         self.config_panel.save_config_btn.clicked.connect(self.save_config)
@@ -696,26 +754,24 @@ class DiffLabelerView(QWidget):
         self.process_panel.process_requested.connect(self.process_requested)
         self.process_panel.sequence_process_requested.connect(self.sequence_process_requested)
 
-        # 引用处理按钮，以便控制器可以禁用/启用
-        self.process_button = self.process_panel.process_button
-        self.sequence_process_button = self.process_panel.sequence_process_button
-
-        # 应用主样式
-        self.setStyleSheet(get_style("APP_STYLE"))
-
-        # 记录启动日志
-        logger.info("差分标注工具已启动")
+        # 新增取消请求信号连接
+        self.cancel_requested.connect(self.controller.cancel_processing)
 
     def directory_changed(self, dir_type, path):
         """目录变更处理"""
-        # 更新相关UI
+        # 更新文件列表
         if dir_type == "bg_dir":
             self.preview_panel.update_bg_files(path)
+            logger.info(f"背景图目录已更新: {path}")
         elif dir_type == "sample_dir":
             self.preview_panel.update_sample_files(path)
+            logger.info(f"样本图目录已更新: {path}")
+        elif dir_type == "output_dir":
+            logger.info(f"输出目录已更新: {path}")
 
-        # 通知配置变更
-        self.config_changed.emit(self.get_current_config())
+        # 更新配置
+        current_config = self.get_current_config()
+        self.config_changed.emit(current_config)
 
     def update_preview(self, bg_img, sample_img, diff_img, result_img):
         """更新预览图像"""
@@ -740,44 +796,99 @@ class DiffLabelerView(QWidget):
             self.preview_panel.update_sample_files(config["sample_dir"])
 
     def set_progress(self, value):
-        """设置进度条值"""
+        """更新进度条"""
         self.process_panel.set_progress(value)
-
-        # 如果当前不在处理标签页且进度不为0，自动切换到处理页
-        if value > 0 and value < 100 and self.tab_widget.currentIndex() != 2:  # 处理页索引是2
-            self.tab_widget.setCurrentIndex(2)
-
-    def log_message(self, message):
-        """记录日志消息"""
-        logger.info(message)
+        if value == 100:
+            logger.success("批处理完成")
 
     def save_config(self):
         """保存配置"""
         dialog = QFileDialog()
-        dialog.setNameFilter("JSON Files (*.json)")
         dialog.setDefaultSuffix("json")
-        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        file_path, _ = dialog.getSaveFileName(
+            self, "保存配置", "", "JSON Files (*.json)")
 
-        if dialog.exec():
-            config_path = dialog.selectedFiles()[0]
-            self.save_config_requested.emit(config_path)
+        if file_path:
+            logger.info(f"正在保存配置到: {file_path}")
+            self.save_config_requested.emit(file_path)
 
     def load_config(self):
         """加载配置"""
         dialog = QFileDialog()
-        dialog.setNameFilter("JSON Files (*.json)")
-        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_path, _ = dialog.getOpenFileName(
+            self, "加载配置", "", "JSON Files (*.json)")
 
-        if dialog.exec():
-            config_path = dialog.selectedFiles()[0]
-            self.load_config_requested.emit(config_path)
+        if file_path:
+            logger.info(f"正在加载配置: {file_path}")
+            self.load_config_requested.emit(file_path)
+
+    def on_config_saved(self, success: bool, path: str):
+        """配置保存结果处理"""
+        if success:
+            logger.success(f"配置已保存到: {path}")
+        else:
+            logger.error(f"保存配置失败: {path}")
+
+    def on_config_loaded(self, success: bool, path: str, config: dict):
+        """配置加载结果处理"""
+        if success:
+            logger.success(f"已加载配置: {path}")
+            self.update_from_config(config)
+        else:
+            logger.error(f"加载配置失败: {path}")
+
+    @pyqtSlot(int)
+    def on_progress_updated(self, value: int):
+        """进度更新槽"""
+        self.set_progress(value)
+
+    @pyqtSlot(np.ndarray, np.ndarray, np.ndarray, np.ndarray, int)
+    def on_preview_ready(self, bg_img, sample_img, diff_img, result_img, num_objects: int):
+        """预览就绪槽"""
+        self.update_preview(bg_img, sample_img, diff_img, result_img)
+        logger.debug(f"预览生成完成，检测到 {num_objects} 个差异对象")
+
+    @pyqtSlot(str, bool)
+    def show_status_message(self, message: str, is_error: bool = False):
+        """显示状态消息"""
+        # level = "ERROR" if is_error else "INFO"
+        # logger.log(level, message)
+        pass
+
+    @pyqtSlot()
+    def on_processing_started(self):
+        """处理开始时的UI响应"""
+        self.process_button.setEnabled(False)
+        self.sequence_process_button.setEnabled(False)
+        self.tab_widget.setTabEnabled(0, False)
+        self.tab_widget.setTabEnabled(1, False)
+        logger.info("开始批量处理...")
+
+    @pyqtSlot(int, int, list)
+    def on_processing_finished(self, success_count: int, failure_count: int, error_list: list):
+        """处理完成时的UI响应"""
+        self.process_button.setEnabled(True)
+        self.sequence_process_button.setEnabled(True)
+        self.tab_widget.setTabEnabled(0, True)
+        self.tab_widget.setTabEnabled(1, True)
+
+        if failure_count > 0:
+            logger.warning(f"批量处理完成，共成功 {success_count} 个，失败 {failure_count} 个")
+        else:
+            logger.success(f"批量处理完成，共处理 {success_count} 个")
+
+        # 切换到处理标签页
+        self.tab_widget.setCurrentIndex(2)
 
 
 def main():
     """作为独立应用运行"""
     app = QApplication(sys.argv)
+    logger.set_level("info")  # 设置日志级别为debug可显示更多信息
+    logger.info("启动差分标注工具...")
     window = DiffLabelerView()
     window.show()
+    logger.info("应用程序就绪")
     sys.exit(app.exec())
 
 

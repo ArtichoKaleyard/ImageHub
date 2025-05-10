@@ -82,9 +82,8 @@ class DiffLabelerModel:
         for key, value in config.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-                # logger.info(f"设置参数 {key}={value}")
             else:
-                logger.warning(f"未知参数: {key}")
+                logger.warning(f"未知的配置参数: {key}")
 
     def save_config(self, config_path: str = None) -> bool:
         """
@@ -115,8 +114,6 @@ class DiffLabelerModel:
             # 写入JSON文件
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
-
-            logger.success(f"配置已保存至: {config_path}")
             return True
 
         except Exception as e:
@@ -137,15 +134,13 @@ class DiffLabelerModel:
             config_path = self.config_file
 
         if not os.path.exists(config_path):
-            logger.warning(f"配置文件不存在: {config_path}")
+            logger.warning("配置文件不存在")
             return False
 
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
-
             self.set_config(config_data)
-            logger.success(f"已从 {config_path} 加载配置")
             return True
 
         except Exception as e:
@@ -170,21 +165,18 @@ class DiffLabelerModel:
             sample_img = cv2.imdecode(np.fromfile(sample_path, dtype=np.uint8), cv2.IMREAD_COLOR)
 
             if bg_img is None or sample_img is None:
-                logger.error(f"图像读取失败: {bg_path} 或 {sample_path}")
+                logger.error("图像读取失败")
                 return None, []
 
             # 确保两图大小一致
             if bg_img.shape != sample_img.shape:
-                logger.warning(f"图像尺寸不一致，正在调整")
                 sample_img = cv2.resize(sample_img, (bg_img.shape[1], bg_img.shape[0]))
 
             # 计算绝对差异
             diff = cv2.absdiff(bg_img, sample_img)
 
-            # 转为灰度图
+            # 转为灰度图并处理
             gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-
-            # 应用阈值获取二值掩码
             _, mask = cv2.threshold(gray_diff, self.diff_threshold, 255, cv2.THRESH_BINARY)
 
             # 形态学操作来去除噪点并连接相近区域
@@ -241,7 +233,7 @@ class DiffLabelerModel:
             return mask, bounding_boxes
 
         except Exception as e:
-            logger.error(f"处理图像时出错: {e}")
+            logger.error(f"计算图像差异失败: {e}")
             return None, []
 
     def merge_overlapping_boxes(self, boxes: List[BoundingBox], img_width: int, img_height: int) -> List[BoundingBox]:
@@ -443,69 +435,77 @@ class DiffLabelerModel:
 
     def batch_process(self, progress_callback=None) -> Tuple[int, int, List[str]]:
         """
-        批量处理所有样本图，以样本图为核心逐个处理
-            :param progress_callback:
+        批量处理图像
+
+        Args:
+            progress_callback: 进度回调函数
 
         Returns:
-            processed: 成功处理的图片数
-            failed: 失败的图片数
-            errors: 错误消息列表
+            processed_count: 成功处理的数量
+            failed_count: 失败的数量
+            error_list: 错误信息列表
         """
         if not os.path.exists(self.bg_dir) or not os.path.exists(self.sample_dir):
-            return 0, 0, ["背景或样本目录不存在"]
+            logger.error("目录不存在")
+            return 0, 0, ["源目录不存在"]
+
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
 
         # 获取样本图列表
         sample_files = [f for f in os.listdir(self.sample_dir)
-                       if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
+                       if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-        # 获取背景图列表
-        bg_files = [f for f in os.listdir(self.bg_dir)
-                   if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
-
-        # 检查是否有样本图
         if not sample_files:
-            return 0, 0, ["样本目录中没有图片"]
+            logger.warning("未找到图像文件")
+            return 0, 0, ["未找到图像文件"]
 
-        if not bg_files:
-            return 0, 0, ["背景目录中没有图片"]
+        processed_count = 0
+        failed_count = 0
+        error_list = []
 
-        # 处理结果统计
-        processed = 0
-        failed = 0
-        errors = []
-        total = len(sample_files)
+        total_files = len(sample_files)
+        for i, sample_file in enumerate(sample_files):
+            sample_path = os.path.join(self.sample_dir, sample_file)
+            
+            # 尝试寻找匹配的背景图
+            base_name = self.extract_base_name(sample_file)
+            bg_file = self.find_matching_bg(sample_file, [f for f in os.listdir(self.bg_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+            
+            if not bg_file:
+                error_msg = f"未找到对应的背景图: {sample_file}"
+                error_list.append(error_msg)
+                failed_count += 1
+                logger.error(error_msg)
+                continue
 
-        # 根据样本图逐个处理
-        for idx, sample_file in enumerate(sample_files):
-            # 寻找匹配的背景图
-            bg_match = self.find_matching_bg(sample_file, bg_files)
-
-            # 如果没有匹配，尝试使用第一个背景图
-            if bg_match is None and bg_files:
-                bg_match = bg_files[0]
-                logger.warning(f"没有找到与 {sample_file} 匹配的背景图，使用默认背景 {bg_match}")
-
-            # 处理图片对
-            if bg_match:
-                success, message = self.process_image_pair(bg_match, sample_file)
+            bg_path = os.path.join(self.bg_dir, bg_file)
+            
+            try:
+                # 处理图像对
+                success, message = self.process_image_pair(bg_file, sample_file)
+                
                 if success:
-                    processed += 1
+                    processed_count += 1
                     logger.success(message)
                 else:
-                    failed += 1
-                    errors.append(message)
-                    logger.error(message)
-            else:
-                failed += 1
-                error_msg = f"没有可用的背景图匹配: {sample_file}"
-                errors.append(error_msg)
+                    failed_count += 1
+                    error_list.append(f"处理失败: {sample_file}")
+                    logger.error(f"处理失败: {sample_file}")
+                
+            except Exception as e:
+                error_msg = f"处理异常 {sample_file}: {str(e)}"
+                error_list.append(error_msg)
+                failed_count += 1
                 logger.error(error_msg)
 
+            # 更新进度
             if progress_callback:
-                progress = int((idx + 1) / total * 100)
-                progress_callback(progress)
+                progress = int((i + 1) / total_files * 100)
+                if not progress_callback(progress):
+                    break
 
-        return processed, failed, errors
+        return processed_count, failed_count, error_list
 
     def get_sample_sequence(self) -> Dict[str, List[str]]:
         """

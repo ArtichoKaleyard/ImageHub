@@ -49,7 +49,7 @@ class Logger:
         """
         self._log_to_console = log_to_console
         self._log_to_gui = log_to_gui
-        self._gui_callback = None
+        self._gui_callbacks = []  # 改为列表以支持多个GUI输出
         # 临时设置状态
         self._temp_log_to_console = None
         self._temp_log_to_gui = None
@@ -78,9 +78,21 @@ class Logger:
             text_edit: QTextEdit或兼容对象，必须有append方法
         """
         if hasattr(text_edit, 'append'):
-            self._gui_callback = text_edit.append
+            if text_edit not in self._gui_callbacks:
+                self._gui_callbacks.append(text_edit.append)
         else:
             raise ValueError("GUI日志控件必须有append方法")
+        return self
+
+    def remove_gui_log_widget(self, text_edit):
+        """
+        移除GUI日志控件
+
+        Args:
+            text_edit: 要移除的QTextEdit控件
+        """
+        if text_edit in self._gui_callbacks:
+            self._gui_callbacks.remove(text_edit.append)
         return self
 
     def console_only(self):
@@ -126,10 +138,14 @@ class Logger:
             console_log = format_console_log(timestamp, message, level)
             print(console_log)
 
-        # 输出到GUI
-        if to_gui and self._gui_callback is not None:
+        # 输出到所有GUI回调
+        if to_gui and self._gui_callbacks:
             html_log = format_log_html(timestamp, message, level)
-            self._gui_callback(html_log)
+            for callback in self._gui_callbacks:
+                try:
+                    callback(html_log)
+                except Exception as e:
+                    print(f"GUI日志输出失败: {e}")  # 防止GUI回调失败影响程序运行
 
     def info(self, message: str):
         """记录信息日志"""
