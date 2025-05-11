@@ -1,156 +1,98 @@
-# ImageHub - 图像处理工具集
+# <img src="icons/app_icon.png" style="height: 1em; vertical-align: middle;" /> ImageHub - 图像处理工具集
 
-ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个实用的图像处理功能模块。目前包含图像缩放器、自动重命名、自动标注辅助工具以及差异标注工具等功能模块。
+ImageHub是一个基于PyQt6开发的多功能图像处理工具集合，提供了丰富的图像处理和标注功能。该工具集包含五个主要功能模块，每个模块都针对特定的图像处理需求进行了优化设计。
 
-## 目录
-- [功能特点](#功能特点)
-  - [图像缩放器](#1-图像缩放器)
-  - [图片自动重命名](#2-图片自动重命名)
-  - [图像处理验证器](#3-图像处理验证器)
-  - [自动标注辅助工具](#4-自动标注辅助工具)
-  - [差异标注工具](#5-差异标注工具)
-- [技术特性](#技术特性)
-  - [主要组件说明](#主要组件说明)
-  - [功能模块划分](#功能模块划分)
-- [环境要求](#环境要求)
-- [安装说明](#安装说明)
-- [使用说明](#使用说明)
-  - [启动应用](#启动应用)
-  - [图像缩放器使用](#图像缩放器使用)
-  - [图片重命名器使用](#图片重命名器使用)
-  - [图像处理验证器使用](#图像处理验证器使用)
-  - [标注加速器使用](#标注加速器使用)
-- [项目结构](#项目结构)
+## ✨ 功能概览
 
-## 功能特点
+### 1. 📏 图像缩放工具
+- 实时监控系统剪贴板
+- 智能调整图像分辨率（支持1080p/1440p自动切换）
+- 多种专业缩放算法支持
+- 原图与结果实时预览
+- 自定义纵横比容差设置
+- 一键复制结果到剪贴板
 
-### 1. 图像缩放器
-- 自动监控系统剪贴板
-- 智能调整图像尺寸
-- 支持多种缩放算法
-- 实时预览原图和处理结果
-- 自定义目标尺寸和容差值
-- 自动复制回剪贴板功能
+### 2. 🔄 图片自动重命名工具
+- 文件夹实时监控
+- 自动序号重命名功能
+- 自定义文件数量上限
+- 实时操作日志显示
+- Windows系统通知集成
+- 智能防重复处理机制
 
-### 2. 图片自动重命名
-- 文件夹监控功能
-- 自动序号重命名
-- 自定义最大文件数限制
-- 实时日志显示
-- Windows 系统通知集成
-- 防重复处理机制
-
-### 3. 图像处理验证器
-- 批量验证图像处理结果
-- 支持多种命名规则验证
-- 自动检测处理完整性
+### 3. ✅ 图像处理验证工具
+- 支持批量图像校验
+- 多种命名规则验证
+- 自动完整性检查
 - 多线程并行处理
 - 详细的验证报告
-- JSON配置支持
+- JSON配置文件支持
 
-### 4. 自动标注辅助工具
-- 支持两种标注模式：仅自动绘制、绘制并下一张
-- 可自定义绘制延迟和下一张延迟时间
-- 实时统计绘制框数和处理图片数
-- 支持快捷键自定义
-- 状态动画和颜色标记
-- 详细的日志记录功能
-
-### 5. 差异标注工具
-- 支持两张图片的对比标注
-- 智能检测差异区域
-- 自定义标注颜色和样式
-- 实时预览对比效果
-- 支持批量处理模式
-- 导出标注结果
-
-## 技术特性
-
-- 现代化UI设计
-- 深色/浅色主题自适应
-- 流畅的动画效果
-- 多线程处理
+### 4. 🏷️ 标注加速工具
+- **三种标注模式**：
+  - 仅自动绘制
+  - 仅自动下一张
+  - 绘制并自动下一张
+- 自定义延迟时间设置
+- 实时标注统计
+- 完全自定义快捷键
 - 实时状态反馈
+- 详细的操作日志
+
+### 5. 🔍 差分标注工具
+- **两种处理模式**：
+  - 标准处理（一对一匹配）
+  - 序列处理（一对多匹配）
+- 智能差异检测算法
+- 可视化标注预览
+- YOLO格式输出支持
+- 批量处理能力
+- 高度可配置参数
+
+## ⚙️ 技术特性
+
+- 基于PyQt6的现代化界面设计
+- 深色/浅色主题自适应
+- 流畅的状态动画效果
+- 多线程任务处理
+- 实时状态反馈系统
 - 自定义字体支持
-- 错误处理与提示
-- JSON配置管理
+- 完善的错误处理
+- 模块化的项目结构
 
-### 主要组件说明：
+## 💻 系统要求
 
-1. **主程序文件**
-   - main.py: 应用程序入口点
-   - main_window.py: 主窗口框架实现
-
-2. **图像缩放器模块**
-   - clipboard_image_scaler_core.py: 核心功能实现，包含图像处理逻辑
-   - clipboard_image_scaler_gui.py: 图形界面实现，处理用户交互
-
-3. **自动标注辅助工具模块（新增）**
-   - auto_labeler_model.py: 核心逻辑和状态管理
-   - auto_labeler_view.py: 图形用户界面
-   - auto_labeler_controller.py: 控制器层，处理用户交互
-
-4. **配置模块**
-   - config.py: 包含主题设置、样式定义和动画配置
-
-5. **图像处理验证器模块**
-   - image_verifier_gui.py: 验证器GUI实现
-   - image_verifier_adapter.py: 验证器中间层实现
-   - image_verifier_core.py: 验证器核心实现
-   - help.html: 配置说明文档
-
-6. **资源目录**
-   - icons: 存放UI所需的图标资源
-
-### 功能模块划分：
-
-1. **核心功能层**
-   - 图像处理和缩放
-   - 剪贴板操作
-   - 配置管理
-   - 图像验证
-
-2. **界面层**
-   - 主窗口框架
-   - 图像缩放器界面
-   - 状态动画效果
-   - 验证器界面
-
-3. **配置层**
-   - 主题配置
-   - 样式定义
-   - 动画参数
-   - JSON配置
-
-## 环境要求
-
+### 基本环境
 - Python 3.12+
+- 操作系统：Windows 10/11
+
+### 核心依赖
 - PyQt6 6.9.0+
 - PyQt6-WebEngine 6.9.0+
 - OpenCV-Python 4.11.0+
 - Numpy 2.2.5+
+- Pillow (PIL)
 - Win32clipboard (Windows平台)
 - Watchdog 6.0+
-- Pillow (PIL)
-- pynput (可选，用于全局快捷键支持)
-- 其他依赖项请参考 requirements.txt
+- pynput (可选，用于全局快捷键)
 
-## 安装说明
+## 📥 安装指南
 
 1. 克隆项目到本地：
 ```bash
-git clone https://github.com/your-username/ImageHub.git
+git clone https://github.com/ArtichoKaleyard/ImageHub.git
 cd ImageHub
 ```
 
-2. 创建并激活虚拟环境：
-你可以选择使用 Python 虚拟环境：
+2. 创建虚拟环境：
+
+使用venv：
 ```bash
 python -m venv venv
 .\venv\Scripts\activate  # Windows
 ```
 
-或者使用 Conda 环境：
+或使用Conda：
 ```bash
 conda env create -f environment.yml
 conda activate imagehub
@@ -161,197 +103,187 @@ conda activate imagehub
 pip install -r requirements.txt
 ```
 
-## 使用说明
+## 🚀 使用指南
 
 ### 启动应用
+
+主程序启动：
 ```bash
 python main.py
 ```
 
-或使用独立功能模块：
-- 图像缩放器：`python ClipboardImageScaler/clipboard_image_scaler_gui.py`
-- 自动重命名：`python AutoRename/auto_rename_gui.py`
-- 自动标注工具：`python AutoLabeler/auto_labeler_view.py`
+独立模块启动：
+- 图像缩放工具：`python ClipboardImageScaler/clipboard_image_scaler_gui.py`
+- 图片重命名工具：`python AutoRename/auto_rename_gui.py`
+- 图像验证工具：`python ImageProcessingValidator/verify_image_gui.py`
+- 标注加速工具：`python AutoLabeler/auto_labeler_view.py`
 - 差异标注工具：`python DiffLabeler/diff_labeler_view.py`
-- 图像处理验证器：`python ImageProcessingValidator/verify_image_gui.py`
 
-## 项目结构
-
-```
-ImageHub/
-├── main.py                 # 主程序入口
-├── main_window.py          # 主窗口实现
-│
-├── AutoLabeler/            # 自动标注辅助工具模块
-│   ├── auto_labeler_model.py      # 模型层(状态管理/核心逻辑)
-│   ├── auto_labeler_view.py       # 视图层(图形界面)
-│   └── auto_labeler_controller.py # 控制器层(事件处理)
-│
-├── DiffLabeler/           # 差异标注工具模块
-│   ├── diff_labeler_model.py      # 模型层(差异检测/核心逻辑)
-│   ├── diff_labeler_view.py       # 视图层(对比界面)
-│   └── diff_labeler_controller.py # 控制器层(交互处理)
-│
-├── ClipboardImageScaler/   # 剪贴板图片缩放模块
-│   ├── clipboard_image_scaler_gui.py  # 图形界面
-│   └── clipboard_image_scaler_core.py # 核心功能
-│
-├── AutoRename/            # 图片自动重命名模块
-│   └── auto_rename_gui.py # 图形界面
-│
-├── ImageProcessingValidator/ # 图像处理验证器
-│   ├── verify_image_gui.py     # 图形界面层
-│   ├── image_verifier_adapter.py # 适配器层
-│   ├── image_verifier_core.py   # 核心验证逻辑
-│   └── help.html               # 可交互式帮助文档
-│
-├── config/               # 配置文件目录
-│   ├── DI_config.json   # DiffLabeler配置
-│   └── IPV_config.json  # 验证器配置
-│
-├── style/               # 样式资源
-│   ├── style_config.py  # 样式配置
-│   ├── style_interface.py # 样式接口
-│   ├── log_style.py    # 日志样式定义
-│   └── style_usage_example.py # 样式使用示例
-│
-├── utils/              # 工具类
-│   ├── logger.py      # 日志记录器
-│   └── windows_notification.py # Windows通知集成
-│
-├── icons/              # 图标资源目录
-│   ├── app_icon.png   # 应用图标
-│   ├── ImageHub.ico   # 程序图标
-│   ├── ImageHub_splash.png # 启动画面
-│   ├── arrow_up_icon.svg  # UI图标
-│   ├── arrow_down_icon.svg
-│   ├── check_icon.svg
-│   ├── chevron_down_dark.svg
-│   └── chevron_down_light.svg
-│
-├── build/             # 构建输出目录
-│   ├── ImageHub/     # 应用构建结果
-│   └── main/         # 主程序构建结果
-│
-├── requirements.txt   # Python依赖
-└── environment.yml    # Conda环境配置
-```
-- Numpy 2.2+
-- Win32clipboard (Windows平台)
-- Watchdog 6.0+
-- Pillow (PIL)
-- pynput (可选，用于全局快捷键支持)
-
-## 安装说明
-
-1. 克隆项目到本地：
-```bash
-git clone https://github.com/yourusername/ImageHub.git
-cd ImageHub
-```
-
-2. 创建并激活虚拟环境（推荐）：
-```bash
-conda env create -f environment.yml
-conda activate your_env_name
-```
-
-3. 安装依赖：
-```bash
-pip install -r requirements.txt
-```
-
-## 使用说明
-
-### 启动应用
-
-```bash
-python main.py
-```
-
-### 图像缩放器使用
+### 图像缩放工具使用
 
 1. 设置目标尺寸（默认1920x1080）
-2. 调整缩放参数（可选）：
-   - 纵横比容差
-   - 缩放算法
+2. 配置缩放参数：
+   - 纵横比容差值
+   - 缩放算法选择
    - 自动复制选项
 3. 点击"开始监控"
 4. 复制任意图像到剪贴板
-5. 程序会自动处理并显示结果
+5. 自动处理并预览结果
 
-![image](https://github.com/user-attachments/assets/dda905c9-ae15-479a-b6d6-170436fb5c65)
+<img src="docs/images/图像缩放工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
 
-### 图片重命名器使用
+### 图片重命名工具使用
 
-1. 选择要监控的文件夹
-2. 设置最大文件数限制
-3. 点击"开始监控"
-4. 将图片保存到监控文件夹
-5. 程序会自动重命名并记录日志
+1. 选择监控目录
+2. 配置文件数量限制
+3. 启动监控功能
+4. 向目录中添加图片
+5. 自动完成重命名
 
-![image](https://github.com/user-attachments/assets/f65b0e21-6d0e-458b-9aa4-6c3ed47d3dc8)
+<img src="docs/images/图片批量重命名工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
 
-### 图像处理验证器使用
+### 图片处理验证工具使用
 
-1. 配置 config/IPV_config.json
-2. 选择验证模式：
-   - range: 固定范围序号
-   - numeric: 任意数字序号
-   - custom: 自定义正则匹配
-3. 点击"开始验证"
-4. 查看验证报告和日志
+#### 基础配置
+1. 设置工作目录：
+   - 原始图片图目录
+   - 处理后图片目录
+   - 输出未处理图片目录
+2. 配置验证参数：
+   - 命名模式配置
+   - 后缀配置
+   - 性能配置
+   - 配置预设
 
-![image](https://github.com/user-attachments/assets/923b70dc-1d09-432a-88e8-127f286ada65)
+#### 处理流程
+1. 配置参数
+2. 开始批量验证
+3. 查看处理日志和结果
 
-### 标注加速器使用
+<img src="docs/images/图片处理验证工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
 
-1. 设置操作模式（默认仅自动绘制）
-   - 仅自动绘制
-   - 绘制并下一张
-3. 调整绘制参数（可选）：
-   - 绘制延迟
-   - 下一张延迟
+### 标注加速工具使用
+
+1. 选择操作模式
+2. 配置操作参数：
+   - 绘制延迟时间
+   - 切换延迟时间
    - 点击检测延迟
-   - 绘制快捷键
-   - 下一张快捷键
-4. 点击"开始监控"
-5. 开始在标注工具绘制锚框
-6. 程序会自动处理并显示结果
+   - 快捷键设置
+3. 开始监控
+4. 配合标注软件使用
 
-![image](https://github.com/user-attachments/assets/f7c5a173-b97c-4712-a294-485c520eef30)
+<img src="docs/images/标注加速工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
 
-## 贡献指南
+### 差分标注工具使用
 
+#### 基础配置
+1. 设置工作目录：
+   - 背景图目录
+   - 样本图目录
+   - 输出目录
+2. 配置检测参数：
+   - 最小差异面积
+   - 检测敏感度
+   - 标签ID设置
+   - 边界框参数
+
+#### 处理流程
+1. 选择处理模式：
+   - 标准模式：独立处理每张样本图
+   - 序列模式：按序列批量处理
+2. 使用预览功能验证效果
+3. 开始批量处理
+4. 查看处理日志和结果
+
+<img src="docs/images/差分标注工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
+
+## 🏗️ 项目结构
+
+```
+ImageHub/
+├── main.py                     # 主程序入口
+├── main_window.py             # 主窗口实现
+│
+├── ClipboardImageScaler/      # 图像缩放模块
+│   ├── clipboard_image_scaler_gui.py
+│   └── clipboard_image_scaler_core.py
+│
+├── AutoRename/                # 图片重命名模块
+│   └── auto_rename_gui.py
+│
+├── ImageProcessingValidator/  # 图像验证模块
+│   ├── verify_image_gui.py
+│   ├── image_verifier_adapter.py
+│   ├── image_verifier_core.py
+│   └── help.html
+│
+├── AutoLabeler/              # 标注加速模块
+│   ├── auto_labeler_model.py
+│   ├── auto_labeler_view.py
+│   └── auto_labeler_controller.py
+│
+├── DiffLabeler/             # 差异标注模块
+│   ├── diff_labeler_model.py
+│   ├── diff_labeler_view.py
+│   └── diff_labeler_controller.py
+│
+├── style/                   # 样式资源
+│   ├── style_config.py
+│   ├── style_interface.py
+│   └── log_style.py
+│
+├── utils/                  # 工具类
+│   ├── logger.py
+│   └── windows_notification.py
+│
+├── config/                 # 配置文件
+│   ├── DI_config.json
+│   └── IPV_config.json
+│
+└── icons/                 # 图标资源
+    ├── app_icon.png
+    ├── ImageHub.ico
+    └── ...
+```
+
+## 👨‍💻 开发指南
+
+### 代码风格
+- 遵循PEP 8规范
+- 遵循MVC架构
+- 使用类型注解
+- 详细的文档注释
+- 模块化设计原则
+
+### 贡献流程
 1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交改动 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+2. 创建特性分支
+3. 提交改动
+4. 发起合并请求
 
-## 待实现功能
+## 🔜 更新计划
 
-- [ ] 批量处理功能
 - [ ] 更多图像处理算法
-- [ ] 自定义预设配置
-- [ ] 处理历史记录
-- [ ] 自动标注工具的更多模式支持
+- [ ] 批量处理性能优化
+- [ ] 交互体验改进
+- [ ] 跨平台兼容性增强
 
-## 版权和许可
+## 🙏 致谢
 
-该项目采用 MIT 许可证 - 查看 LICENSE 文件了解详情
+- PyQt6 开发团队
+- OpenCV 社区
+- 所有代码编写过程中使用的AI工具
 
-## 联系方式
+## 📜 许可证
+
+本项目采用 MIT 许可证，详情请参阅 LICENSE 文件。
+
+## 📩 联系方式
 
 - 项目地址：[https://github.com/ArtichoKaleyard/ImageHub](https://github.com/ArtichoKaleyard/ImageHub)
-- 作者邮箱：[follower193949@outlook.com](follower193949@outlook.com)
-
-## 致谢
-
-- PyQt6 团队
-- OpenCV 社区
-- 完成本项目所使用的AI工具
+- 作者邮箱：[follower193949@outlook.com](mailto:follower193949@outlook.com)
 
 ---
 
-如果这个项目对你有帮助，请给个 star ⭐️
+如果这个项目对你有帮助，欢迎 star ⭐️ 支持！
