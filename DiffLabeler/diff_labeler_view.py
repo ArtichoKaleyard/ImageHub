@@ -13,9 +13,9 @@ from PyQt6.QtGui import QPixmap, QImage
 from typing import Dict, Optional
 
 # 导入自定义日志记录器
-from utils.logger import Logger
+from utils.logger import LogManager
 # 创建视图层日志记录器
-logger = Logger(log_to_console=True, level="info")
+logger = LogManager.get_logger("DL", level="info")
 
 # 导入 Model 和 Controller
 from DiffLabeler.diff_labeler_model import DiffLabelerModel

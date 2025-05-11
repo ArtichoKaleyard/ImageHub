@@ -138,9 +138,10 @@ class AutoLabelerController:
         """
         初始化控制器
         """
-        # 使用 utils 类
-        from utils.logger import Logger
-        self.logger = Logger(log_to_console=True, log_to_gui=True)
+        # 导入自定义日志记录器
+        from utils.logger import LogManager
+        # 创建视图层日志记录器
+        self.logger = LogManager.get_logger("AL", level="info")
 
         # 连接模型和视图
         self.model = model

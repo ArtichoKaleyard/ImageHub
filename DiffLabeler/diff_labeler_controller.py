@@ -16,8 +16,10 @@ if TYPE_CHECKING:
 
 from DiffLabeler.diff_labeler_model import DiffLabelerModel
 
-# 导入自定义日志记录器替代标准logging
-from utils.logger import default_logger as logger
+# 导入自定义日志记录器
+from utils.logger import LogManager
+# 创建视图层日志记录器
+logger = LogManager.get_logger("DL", level="info")
 
 
 class ProcessingWorker(QThread):
