@@ -66,6 +66,7 @@ LIGHT_THEME = {
     "success": "#00C853",
     "warning": "#FFD600",
     "error": "#FF1744",
+    "critical": "#D32F2F",
     "info": "#2196F3",
 
     # 边框颜色
@@ -103,6 +104,7 @@ DARK_THEME = {
     "success": "#00E676",
     "warning": "#CCBB00",
     "error": "#FF5252",
+    "critical": "#ff0000",
     "info": "#40C4FF",
 
     # 边框颜色
@@ -207,7 +209,6 @@ Q_TAB_WIDGET_STYLE = f"""
         margin-top: -2px;                               /* 与标签栏无缝衔接 */
     }}
 """
-
 
 # ---------------------- 按钮样式 ----------------------
 
@@ -644,6 +645,7 @@ LOG_HTML_TEMPLATE = """
 </div>
 """
 
+
 # ---------------------- 状态动画类 ----------------------
 
 class StatusAnimator:
@@ -796,6 +798,7 @@ def with_alpha(color_hex, alpha):
             return color_hex  # 非十六进制颜色保持不变（如预定义的rgba）
     except:
         return color_hex
+
 
 # 状态消息配色方案（带60%透明度）
 STATUS_COLORS = {

@@ -24,10 +24,10 @@ import platform
 import sys
 import importlib.util
 
-
 # 直接导入style_config模块，避免循环依赖
 _style_config_imported = False
 _style_config = None
+
 
 def _import_style_config():
     """动态导入style_config模块，避免循环依赖"""
@@ -54,6 +54,7 @@ class ThemeColors:
         "success": "#00C853",
         "warning": "#FFD600",
         "error": "#FF1744",
+        "critical": "#D32F2F",
         "info": "#2196F3",
         "debug": "#607D8B",
         "timestamp": "#78909C",
@@ -68,6 +69,7 @@ class ThemeColors:
         "success": "#00E676",
         "warning": "#FFEA00",
         "error": "#FF5252",
+        "critical": "#ff0000",
         "info": "#40C4FF",
         "debug": "#B0BEC5",
         "timestamp": "#90A4AE",
@@ -238,7 +240,7 @@ def _get_log_area_style():
     }}
 
     QScrollBar::handle:vertical {{
-        background: {LOG_COLORS["info"]};
+        background: {LOG_COLORS["text_secondary"]};
         min-height: 20px;
         border-radius: 4px;
     }}
@@ -356,6 +358,7 @@ CONSOLE_COLOR_MAP = {
     "success": ConsoleColors.GREEN,
     "warning": ConsoleColors.YELLOW,
     "error": ConsoleColors.RED,
+    "critical": ConsoleColors.BRIGHT_RED,
     "info": ConsoleColors.BLUE,
     "debug": ConsoleColors.BRIGHT_BLACK,
     "normal": ConsoleColors.WHITE
@@ -379,6 +382,7 @@ def format_log_html(timestamp: str, message: str, level: str = "info") -> str:
         'success': 'SUCCESS',
         'warning': 'WARN',
         'error': 'ERROR',
+        'critical': 'CRIT',
         'info': 'INFO',
         'debug': 'DEBUG',
         'normal': 'STATUS'
@@ -428,6 +432,7 @@ def format_console_log(timestamp: str, message: str, level: str = "info") -> str
         'success': 'SUCCESS',
         'warning': 'WARN',
         'error': 'ERROR',
+        'critical': 'CRIT',
         'info': 'INFO',
         'debug': 'DEBUG',
         'normal': 'STATUS'

@@ -228,6 +228,7 @@ class StatusAnimator(config.StatusAnimator):
     """
     pass
 
+
 # 应用标题常量
 APP_TITLE = config.APP_TITLE
 
@@ -254,6 +255,7 @@ LOG_LEVEL_COLORS = {
     "success": LOG_COLORS["success"],
     "warning": LOG_COLORS["warning"],
     "error": LOG_COLORS["error"],
+    "critical": LOG_COLORS["critical"],
     "info": LOG_COLORS["info"],
     "debug": LOG_COLORS["debug"],
     "normal": LOG_COLORS["text"]
