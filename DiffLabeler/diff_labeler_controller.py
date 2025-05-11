@@ -51,9 +51,9 @@ class ProcessingWorker(QThread):
                 return True
 
             if self.by_sequence:
-                processed, failed, errors = self.model.batch_process_by_sequence(update_progress)
+                processed, failed, errors, _ = self.model.batch_process_by_sequence(update_progress)
             else:
-                processed, failed, errors = self.model.batch_process(update_progress)
+                processed, failed, errors, _ = self.model.batch_process(update_progress)
 
             # 如果任务被取消，不发送完成信号
             if not self.is_cancelled:

@@ -1,9 +1,9 @@
 {
-    "bg_dir": "D:/Proselyte/下载/腾讯QQ/yang (2)",
-    "sample_dir": "D:/Proselyte/图片/Photoshop/数据集/车辆",
+    "bg_dir": "D:/Proselyte/下载/腾讯QQ/yang (1)",
+    "sample_dir": "D:/Proselyte/图片/Photoshop/数据集/违章建筑/samples",
     "output_dir": "D:/Proselyte/桌面/临时/out",
-    "min_diff_area": 400,
-    "diff_threshold": 30,
+    "min_diff_area": 750,
+    "diff_threshold": 20,
     "default_label": 0,
     "bbox_padding": 5,
     "min_merge_iou": 0.3

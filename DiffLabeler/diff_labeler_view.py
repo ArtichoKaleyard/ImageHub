@@ -146,6 +146,11 @@ class ImagePreviewWidget(QWidget):
             self.result_label.setPixmap(scaled)
 
     def _convert_cv_to_qimage(self, cv_img):
+        """
+        将OpenCV图像转换为Qt图像，确保正确处理颜色通道
+        """
+        import cv2  # 确保导入cv2
+
         # 确保使用连续内存并复制数据
         if len(cv_img.shape) == 2:
             # 单通道图像（如差异图）
@@ -154,10 +159,12 @@ class ImagePreviewWidget(QWidget):
             qimg = QImage(cv_img.data, width, height, bytes_per_line, QImage.Format.Format_Grayscale8)
         else:
             # 多通道图像（彩色图）
-            height, width, channel = cv_img.shape
+            # 转换BGR到RGB
+            rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+            height, width, channel = rgb_img.shape
             bytes_per_line = 3 * width
-            # 注意：复制一份图像数据，避免外部数据释放后崩溃
-            qimg = QImage(cv_img.copy().data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+            # 复制一份图像数据，避免外部数据释放后崩溃
+            qimg = QImage(rgb_img.copy().data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
 
         return qimg
 
