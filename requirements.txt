@@ -1,20 +1,25 @@
+altgraph @ file:///home/conda/feedstock_root/build_artifacts/altgraph_1734870509730/work
 anyio @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_anyio_1742243108/work
 backports.tarfile @ file:///home/conda/feedstock_root/build_artifacts/backports.tarfile_1733325779670/work
 Brotli @ file:///D:/bld/brotli-split_1725267609074/work
 build @ file:///home/conda/feedstock_root/build_artifacts/python-build_1733230610871/work
 CacheControl @ file:///home/conda/feedstock_root/build_artifacts/cachecontrol-split_1736337859595/work
-certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1739515848642/work/certifi
+certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1746569525376/work/certifi
 cffi @ file:///D:/bld/cffi_1725560655177/work
 charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1735929714516/work
 cleo @ file:///home/conda/feedstock_root/build_artifacts/cleo_1734693717670/work
 colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
+contourpy @ file:///D:/bld/contourpy_1744743089286/work
 crashtest @ file:///home/conda/feedstock_root/build_artifacts/crashtest_1733564795535/work
+cycler @ file:///home/conda/feedstock_root/build_artifacts/cycler_1733332471406/work
 distlib @ file:///home/conda/feedstock_root/build_artifacts/distlib_1733238395481/work
 dulwich @ file:///D:/bld/dulwich_1740965112352/work
 exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1733208806608/work
 fastjsonschema @ file:///home/conda/feedstock_root/build_artifacts/python-fastjsonschema_1733235979760/work/dist
 filelock @ file:///home/conda/feedstock_root/build_artifacts/filelock_1741969488311/work
 findpython @ file:///home/conda/feedstock_root/build_artifacts/findpython_1741582825328/work
+fonttools @ file:///D:/bld/fonttools_1743732212146/work
+future @ file:///home/conda/feedstock_root/build_artifacts/future_1738926421307/work
 h11 @ file:///home/conda/feedstock_root/build_artifacts/h11_1745526374115/work
 h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1738578511449/work
 hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1737618293087/work
@@ -29,20 +34,28 @@ jaraco.classes @ file:///home/conda/feedstock_root/build_artifacts/jaraco.classe
 jaraco.context @ file:///home/conda/feedstock_root/build_artifacts/jaraco.context_1733382590553/work
 jaraco.functools @ file:///home/conda/feedstock_root/build_artifacts/jaraco.functools_1733746366381/work
 keyring @ file:///D:/bld/keyring_1735210213173/work
+kiwisolver @ file:///D:/bld/kiwisolver_1736908223141/work
+matplotlib==3.10.1
 more-itertools @ file:///home/conda/feedstock_root/build_artifacts/more-itertools_1745349462661/work
 msgpack @ file:///D:/bld/msgpack-python_1725975148340/work
+munkres==1.1.4
 mypy==1.15.0
 mypy_extensions==1.1.0
 numpy @ file:///D:/bld/numpy_1745118902482/work/dist/numpy-2.2.5-cp312-cp312-win_amd64.whl#sha256=82e4ad1a45d8557a380c5006e82239b4cfb1edeaacb199a0d399d3c4cb189ada
 opencv-python==4.11.0.86
 packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1745345660/work
 pbs-installer @ file:///home/conda/feedstock_root/build_artifacts/pbs-installer_1744246613411/work
+pefile @ file:///home/conda/feedstock_root/build_artifacts/pefile_1675867622763/work
 pillow @ file:///D:/bld/pillow_1735929729156/work
 pkginfo @ file:///home/conda/feedstock_root/build_artifacts/pkginfo_1739984581450/work
 platformdirs @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_platformdirs_1742485085/work
 poetry @ file:///D:/bld/poetry_1743364557061/work
 poetry-core @ file:///home/conda/feedstock_root/build_artifacts/poetry-core_1743360015710/work
 pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+pyinstaller @ file:///D:/bld/pyinstaller_1744798262946/work
+pyinstaller-hooks-contrib @ file:///home/conda/feedstock_root/build_artifacts/pyinstaller-hooks-contrib_1746353494763/work
+pynput @ file:///D:/bld/pynput_1742252200883/work
+pyparsing @ file:///home/conda/feedstock_root/build_artifacts/pyparsing_1743089729650/work
 pyperclip @ file:///D:/bld/pyperclip_1733932668714/work
 pyproject_hooks @ file:///home/conda/feedstock_root/build_artifacts/pyproject_hooks_1733710025763/work
 PyQt6==6.9.0
@@ -50,7 +63,10 @@ PyQt6-Qt6==6.9.0
 PyQt6-WebEngine==6.9.0
 PyQt6-WebEngine-Qt6==6.9.0
 PyQt6_sip==13.10.0
+PySide6==6.9.0
 PySocks @ file:///D:/bld/pysocks_1733217287171/work
+python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/python-dateutil_1733215673016/work
+python-xlib @ file:///home/conda/feedstock_root/build_artifacts/python-xlib_1734617719736/work
 pywin32==307
 pywin32-ctypes @ file:///D:/bld/pywin32-ctypes_1727282160546/work
 PyYAML @ file:///D:/bld/pyyaml_1737454663129/work
@@ -60,11 +76,15 @@ requests-toolbelt @ file:///home/conda/feedstock_root/build_artifacts/requests-t
 screeninfo @ file:///D:/bld/screeninfo_1715463991603/work
 setuptools==75.8.0
 shellingham @ file:///home/conda/feedstock_root/build_artifacts/shellingham_1733300899265/work
+shiboken6==6.9.0
+six @ file:///home/conda/feedstock_root/build_artifacts/six_1733380938961/work
 sniffio @ file:///home/conda/feedstock_root/build_artifacts/sniffio_1733244044561/work
 tomli @ file:///home/conda/feedstock_root/build_artifacts/tomli_1733256695513/work
 tomlkit @ file:///home/conda/feedstock_root/build_artifacts/tomlkit_1733230743009/work
+tornado @ file:///D:/bld/tornado_1732615900937/work
 trove-classifiers @ file:///home/conda/feedstock_root/build_artifacts/trove-classifiers_1744392212632/work
 typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1744302253/work
+unicodedata2 @ file:///D:/bld/unicodedata2_1736692520607/work
 urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1744323578849/work
 virtualenv @ file:///home/conda/feedstock_root/build_artifacts/virtualenv_1743473963109/work
 watchdog @ file:///D:/bld/watchdog_1730492904836/work
@@ -73,10 +93,3 @@ win10toast @ file:///D:/bld/win10toast_1695795157328/work
 win_inet_pton @ file:///D:/bld/win_inet_pton_1733130564612/work
 zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1732827521216/work
 zstandard==0.23.0
-
-numpy~=2.2.5
-pyqt6-sip~=13.10.0
-win10toast~=0.9
-watchdog~=6.0.0
-pynput~=1.8.1
-pillow~=11.1.0

@@ -1,6 +1,26 @@
 # ImageHub - 图像处理工具集
 
-ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个实用的图像处理功能模块。目前包含图像缩放器、自动重命名和自动标注辅助工具三个主要功能。
+ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个实用的图像处理功能模块。目前包含图像缩放器、自动重命名、自动标注辅助工具以及差异标注工具等功能模块。
+
+## 目录
+- [功能特点](#功能特点)
+  - [图像缩放器](#1-图像缩放器)
+  - [图片自动重命名](#2-图片自动重命名)
+  - [图像处理验证器](#3-图像处理验证器)
+  - [自动标注辅助工具](#4-自动标注辅助工具)
+  - [差异标注工具](#5-差异标注工具)
+- [技术特性](#技术特性)
+  - [主要组件说明](#主要组件说明)
+  - [功能模块划分](#功能模块划分)
+- [环境要求](#环境要求)
+- [安装说明](#安装说明)
+- [使用说明](#使用说明)
+  - [启动应用](#启动应用)
+  - [图像缩放器使用](#图像缩放器使用)
+  - [图片重命名器使用](#图片重命名器使用)
+  - [图像处理验证器使用](#图像处理验证器使用)
+  - [标注加速器使用](#标注加速器使用)
+- [项目结构](#项目结构)
 
 ## 功能特点
 
@@ -28,13 +48,21 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 - 详细的验证报告
 - JSON配置支持
 
-### 4. 自动标注辅助工具（新增）
+### 4. 自动标注辅助工具
 - 支持两种标注模式：仅自动绘制、绘制并下一张
 - 可自定义绘制延迟和下一张延迟时间
 - 实时统计绘制框数和处理图片数
 - 支持快捷键自定义
 - 状态动画和颜色标记
 - 详细的日志记录功能
+
+### 5. 差异标注工具
+- 支持两张图片的对比标注
+- 智能检测差异区域
+- 自定义标注颜色和样式
+- 实时预览对比效果
+- 支持批量处理模式
+- 导出标注结果
 
 ## 技术特性
 
@@ -98,7 +126,116 @@ ImageHub是一个基于PyQt6开发的图像处理工具集合，提供了多个�
 
 - Python 3.12+
 - PyQt6 6.9.0+
-- OpenCV (cv2)
+- PyQt6-WebEngine 6.9.0+
+- OpenCV-Python 4.11.0+
+- Numpy 2.2.5+
+- Win32clipboard (Windows平台)
+- Watchdog 6.0+
+- Pillow (PIL)
+- pynput (可选，用于全局快捷键支持)
+- 其他依赖项请参考 requirements.txt
+
+## 安装说明
+
+1. 克隆项目到本地：
+```bash
+git clone https://github.com/your-username/ImageHub.git
+cd ImageHub
+```
+
+2. 创建并激活虚拟环境：
+你可以选择使用 Python 虚拟环境：
+```bash
+python -m venv venv
+.\venv\Scripts\activate  # Windows
+```
+
+或者使用 Conda 环境：
+```bash
+conda env create -f environment.yml
+conda activate imagehub
+```
+
+3. 安装依赖：
+```bash
+pip install -r requirements.txt
+```
+
+## 使用说明
+
+### 启动应用
+```bash
+python main.py
+```
+
+或使用独立功能模块：
+- 图像缩放器：`python ClipboardImageScaler/clipboard_image_scaler_gui.py`
+- 自动重命名：`python AutoRename/auto_rename_gui.py`
+- 自动标注工具：`python AutoLabeler/auto_labeler_view.py`
+- 差异标注工具：`python DiffLabeler/diff_labeler_view.py`
+- 图像处理验证器：`python ImageProcessingValidator/verify_image_gui.py`
+
+## 项目结构
+
+```
+ImageHub/
+├── main.py                 # 主程序入口
+├── main_window.py          # 主窗口实现
+│
+├── AutoLabeler/            # 自动标注辅助工具模块
+│   ├── auto_labeler_model.py      # 模型层(状态管理/核心逻辑)
+│   ├── auto_labeler_view.py       # 视图层(图形界面)
+│   └── auto_labeler_controller.py # 控制器层(事件处理)
+│
+├── DiffLabeler/           # 差异标注工具模块
+│   ├── diff_labeler_model.py      # 模型层(差异检测/核心逻辑)
+│   ├── diff_labeler_view.py       # 视图层(对比界面)
+│   └── diff_labeler_controller.py # 控制器层(交互处理)
+│
+├── ClipboardImageScaler/   # 剪贴板图片缩放模块
+│   ├── clipboard_image_scaler_gui.py  # 图形界面
+│   └── clipboard_image_scaler_core.py # 核心功能
+│
+├── AutoRename/            # 图片自动重命名模块
+│   └── auto_rename_gui.py # 图形界面
+│
+├── ImageProcessingValidator/ # 图像处理验证器
+│   ├── verify_image_gui.py     # 图形界面层
+│   ├── image_verifier_adapter.py # 适配器层
+│   ├── image_verifier_core.py   # 核心验证逻辑
+│   └── help.html               # 可交互式帮助文档
+│
+├── config/               # 配置文件目录
+│   ├── DI_config.json   # DiffLabeler配置
+│   └── IPV_config.json  # 验证器配置
+│
+├── style/               # 样式资源
+│   ├── style_config.py  # 样式配置
+│   ├── style_interface.py # 样式接口
+│   ├── log_style.py    # 日志样式定义
+│   └── style_usage_example.py # 样式使用示例
+│
+├── utils/              # 工具类
+│   ├── logger.py      # 日志记录器
+│   └── windows_notification.py # Windows通知集成
+│
+├── icons/              # 图标资源目录
+│   ├── app_icon.png   # 应用图标
+│   ├── ImageHub.ico   # 程序图标
+│   ├── ImageHub_splash.png # 启动画面
+│   ├── arrow_up_icon.svg  # UI图标
+│   ├── arrow_down_icon.svg
+│   ├── check_icon.svg
+│   ├── chevron_down_dark.svg
+│   └── chevron_down_light.svg
+│
+├── build/             # 构建输出目录
+│   ├── ImageHub/     # 应用构建结果
+│   └── main/         # 主程序构建结果
+│
+├── requirements.txt   # Python依赖
+└── environment.yml    # Conda环境配置
+```
 - Numpy 2.2+
 - Win32clipboard (Windows平台)
 - Watchdog 6.0+
@@ -183,52 +320,6 @@ python main.py
 6. 程序会自动处理并显示结果
 
 ![image](https://github.com/user-attachments/assets/f7c5a173-b97c-4712-a294-485c520eef30)
-
-## 项目结构
-
-```
-ImageHub/
-├── main.py                 # 主程序入口
-├── main_window.py          # 主窗口实现
-├── config/
-│   ├── style_config.py    # 样式配置
-│   ├── style_interface.py # 样式接口
-│   └── IPV_config.json    # 验证器配置
-│
-├── AutoLabeler/            # 自动标注辅助工具模块
-│   ├── auto_labeler_model.py  # 模型层(状态管理/核心逻辑)
-│   ├── auto_labeler_view.py   # 视图层(图形界面)
-│   └── auto_labeler_controller.py # 控制器层(事件处理)
-│
-├── ClipboardImageScaler/   # 剪贴板图片缩放模块
-│   ├── clipboard_image_scaler_gui.py # 图形界面
-│   └── clipboard_image_scaler_core.py # 核心功能
-│
-├── AutoRename/            # 图片自动重命名模块
-│   └── auto_rename_gui.py # 图形界面
-│
-├── ImageProcessingValidator/ # 图像处理验证器
-│   ├── image_verifier_gui.py # 图形界面层
-│   ├── image_verifier_adapter.py # 适配器层(GUI/CLI双模式)
-│   ├── image_verifier_core.py # 核心验证逻辑
-│   └── help.html          # 可交互式帮助文档
-│
-├── Logger/                # 日志系统
-│   └── logger.py          # 日志记录器实现
-│
-├── style/                 # 样式资源
-│   ├── style_config.py    # 样式配置
-│   ├── log_style.py       # 日志样式定义
-│   └── style_usage_example.py # 样式使用示例
-│
-├── icons/                 # 图标资源目录
-│   ├── app_icon.png       # 应用图标
-│   ├── dark/              # 深色主题图标
-│   └── light/             # 浅色主题图标
-│
-├── requirements.txt       # Python依赖
-└── environment.yml        # Conda环境配置
-```
 
 ## 贡献指南
 
