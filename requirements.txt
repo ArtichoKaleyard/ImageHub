@@ -74,7 +74,7 @@ RapidFuzz @ file:///D:/bld/rapidfuzz_1743733983266/work
 requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1733217035951/work
 requests-toolbelt @ file:///home/conda/feedstock_root/build_artifacts/requests-toolbelt_1733734787568/work
 screeninfo @ file:///D:/bld/screeninfo_1715463991603/work
-setuptools==75.8.0
+setuptools==78.1.1
 shellingham @ file:///home/conda/feedstock_root/build_artifacts/shellingham_1733300899265/work
 six @ file:///home/conda/feedstock_root/build_artifacts/six_1733380938961/work
 sniffio @ file:///home/conda/feedstock_root/build_artifacts/sniffio_1733244044561/work
