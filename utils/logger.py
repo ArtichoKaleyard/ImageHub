@@ -27,6 +27,7 @@
 """
 
 import datetime
+import html
 import threading
 from typing import Dict, List, Optional, Callable, Any, Union
 from style.style_interface import format_console_log, format_log_html
@@ -233,7 +234,9 @@ class Logger:
 
         # 输出到GUI
         if to_gui:
-            html_log = format_log_html(timestamp, full_message, level)
+            # 在构建 html_log 前转义特殊字符
+            safe_message = html.escape(full_message)
+            html_log = format_log_html(timestamp, safe_message, level)
 
             # 使用信号机制更新Qt界面
             self._signaler.log_signal.emit(html_log)
