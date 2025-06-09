@@ -141,16 +141,45 @@
 
 <!-- 正则表达式说明 -->
 <h3>4. 自定义模式 - 正则表达式要求</h3>
-<p>自定义模式必须包含以下两个命名组：</p>
+<p>使用自定义正则表达式可匹配更灵活的文件命名方式，支持以下命名模式：</p>
 <ul>
-  <li><code>(?P&lt;base_name&gt;...)</code> - 匹配基础文件名部分</li>
-  <li><code>(?P&lt;suffix&gt;...)</code> - 匹配后缀部分（必须为数字）</li>
+  <li><code>命名组：<b>base_name</b></code>
+    <ul>
+      <li>基础文件名（在“纯序号模式”中可留空，后缀即为序号）</li>
+      <li>例如 <code>"1.png"</code>：可视为 <code>base_name=""</code>，<code>suffix="1"</code></li>
+    </ul>
+  </li>
+  <li><code>命名组：<b>suffix</b></code>
+    <ul>
+      <li>后缀部分（可选）</li>
+      <li><b>当启用“纯原名模式”时，suffix 命名组可以不存在或为空</b></li>
+    </ul>
+  </li>
 </ul>
+
+<p>你可以根据是否需要 base_name 和 suffix 来组合以下使用方式：</p>
+
+<table>
+  <tr><th>命名模式</th><th>custom_pattern 示例</th></tr>
+  <tr>
+    <td>纯序号（如 <code>10.png</code>）</td>
+    <td><code>^(?P&lt;suffix&gt;\d+)\.png$</code></td>
+  </tr>
+  <tr>
+    <td>纯原名（如 <code>photo.png</code>）</td>
+    <td><code>^(?P&lt;base_name&gt;.+)\.png$</code></td>
+  </tr>
+  <tr>
+    <td>原名 + 数字后缀（如 <code>image_1.png</code>）</td>
+    <td><code>^(?P&lt;base_name&gt;.+)_(?P&lt;suffix&gt;\d+)\.png$</code></td>
+  </tr>
+</table>
 <p>示例：</p>
 <pre>
 ^(?P&lt;base_name&gt;.+)_(?P&lt;suffix&gt;\d+)\.png$
 </pre>
-<p>注意：正则表达式中的反斜杠 <code>\</code> 需要转义为 <code>\\</code>（JSON 文件中）</p>
+<p>说明：正则表达式中的 <code>\d+</code> 确保 suffix 必须为数字，不参与命名的命名组可以留空或省略。</p>
+<p>注意：正则表达式的语法必须有效，且与你的文件命名格式严格对应。</p>
 
 <!-- 完整JSON示例 -->
 <h3>5. 完整 JSON 示例</h3>
