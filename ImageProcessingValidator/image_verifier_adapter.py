@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import time
 import threading
 from typing import List, Dict, Tuple, Set, Callable, Optional, Any, Union
@@ -70,7 +71,7 @@ class VerifierWorker(QRunnable):
         self.config = config
         self.signals = VerifierSignals()
         self.abort = False
-        self.logger = LogManager.get_logger("VerifierWorker")
+        self.logger = LogManager.get_logger("IV")
 
     @pyqtSlot()
     def run(self):
@@ -115,6 +116,10 @@ class ImageVerifierAdapter:
         self._is_gui_mode = False
         self.logger = LogManager.get_logger("IV")
 
+        # 初始化后缀类型判断标志
+        self.is_pure_serial = False
+        self.is_pure_basename = False
+
     def set_gui_signals(self, signals: VerifierSignals):
         """
         设置GUI信号，切换到GUI模式
@@ -143,7 +148,7 @@ class ImageVerifierAdapter:
             source_folder: str,
             target_folder: str,
             missing_folder: str,
-            suffix_type: str = "range",  # "range", "numeric", "custom"
+            suffix_type: str = "range",  # "range", "numeric", 或 "custom"
             suffix_range: Tuple[int, int] = (1, 9),
             min_digits: int = 1,
             max_digits: int = None,
@@ -157,151 +162,179 @@ class ImageVerifierAdapter:
             max_workers: int = None,
     ) -> Dict:
         start_time = time.time()
+
+        # 初始化所有要用到的变量，避免 "local variable referenced before assignment" 错误
+        expected_suffixes = None
+        expected_count = None
+        naming_format = None
+        self.is_pure_serial = False
+        self.is_pure_basename = False
+
         self.logger.info(f"开始验证图片处理情况... (最大并行线程数: {max_workers if max_workers else '自动'})")
         self.logger.info(f"原始图片文件夹: {source_folder}")
         self.logger.info(f"处理后图片文件夹: {target_folder}")
         self.logger.info(f"未处理图片输出文件夹: {missing_folder}")
 
-        # 初始化 processed_images 为默认空字典
-        processed_images = {}
+        # 设置默认 expected_extension 为后缀
+        if expected_extension and not expected_extension.startswith("."):
+            expected_extension = "." + expected_extension
 
-        # 根据 suffix_type 创建不同的命名模式
+        # 构建命名模式
         if suffix_type == "range":
-            self.logger.info(f"后缀类型: 范围")
-            self.logger.info(f"后缀范围: {suffix_range[0]}-{suffix_range[1]}")
+            self.logger.info("后缀类型: 范围")
+            self.logger.info(f"后缀范围: {suffix_range[0]} - {suffix_range[1]}")
             naming_pattern = NamingPattern.create_range_suffix_pattern(
                 suffix_delimiter, expected_extension, suffix_range
             )
             expected_suffixes = [str(i) for i in range(suffix_range[0], suffix_range[1] + 1)]
-            expected_count = suffix_range[1] - suffix_range[0] + 1
-            naming_format = f"[原名]{suffix_delimiter}[{suffix_range[0]}-{suffix_range[1]}]{expected_extension}"
+            expected_count = len(expected_suffixes)
+            naming_format = f"[base]{suffix_delimiter}[{suffix_range[0]}-{suffix_range[1]}]{expected_extension}"
 
         elif suffix_type == "numeric":
-            self.logger.info(f"后缀类型: 数字")
+            self.logger.info("后缀类型: 数字")
             self.logger.info(f"最小位数: {min_digits}")
             self.logger.info(f"最大位数: {max_digits if max_digits else '不限'}")
             naming_pattern = NamingPattern.create_numeric_suffix_pattern(
                 suffix_delimiter, expected_extension, min_digits, max_digits
             )
-            naming_format = f"[原名]{suffix_delimiter}[数字{min_digits}{'-' + str(max_digits) if max_digits else '+'}位]{expected_extension}"
-            expected_suffixes = None
-            expected_count = None
+            self.logger.info(f"使用模式: {naming_pattern.pattern}")
+            expected_suffixes = None  # 数字格式无法直接判断完整后缀集
+            expected_count = expected_count_per_image
+            naming_format = f"[base]{suffix_delimiter}[数字{'+' + str(max_digits) if max_digits else ''}位]{expected_extension}"
 
         elif suffix_type == "custom":
-            self.logger.info(f"后缀类型: 自定义")
+            self.logger.info("后缀类型: 自定义")
+            if not custom_pattern:
+                raise ValueError("未指定 custom_pattern，无法使用自定义模式")
+
             self.logger.info(f"自定义模式: {custom_pattern}")
             naming_pattern = NamingPattern.create_custom_pattern(custom_pattern)
 
-            # 新增命名模式类型判断
-            self.is_pure_serial = False
-            self.is_pure_basename = False
-
-            # 解析正则表达式组
+            # 解析正则表达式中是否存在 base_name 或 suffix 组
             has_base = '?P<base_name>' in custom_pattern
             has_suffix = '?P<suffix>' in custom_pattern
-            if not has_base and has_suffix:
 
-                # 纯序号模式 (例如：^\d+\.txt$)
+            self.logger.debug(f"命名模式解析: base_name={'存在' if has_base else '不存在'}, "
+                              f"suffix={'存在' if has_suffix else '不存在'}")
+
+            if not has_base and has_suffix:
+                # 原名不存，只有 suffix（类似纯序号命名: ^\d+\.png$）
                 self.is_pure_serial = True
-                expected_count = len(self.verifier.source_files)  # 默认期望与原文件数量一致
-                self.logger.info(f"纯序号模式检测：将执行数量验证（预期数量: {expected_count}）")
-                naming_format = f"纯序号格式（无法对应原始文件）"
-                self.logger.warning("警告：无法验证文件名对应关系，仅验证处理后的文件总数")
+                expected_suffixes = []
+                # 不能在这里访问 self.verifier.source_images（还没创建）
+                # expected_count = len(self.verifier.source_images)  # 假设期望数量 = 原始文件数
+                naming_format = f"纯数字序号格式（{custom_pattern}）"
 
             elif has_base and not has_suffix:
-                # 纯原名模式 (例如：^.+\.txt$)
+                # 原名存在，没有 suffix（如一对一映射处理后的文件）
                 self.is_pure_basename = True
                 expected_suffixes = ['']
                 expected_count = 1
-                naming_format = "原名格式（一对一处理）"
+                naming_format = f"[base]{expected_extension}"
+
+            else:
+                # 普通自定义模式，提取所有的 suffixes（前提 suffix 组存在）
+                # 示例: ^prefix_(?P<suffix>abc|123)\.(png|jpg)$  -> ['abc', '123']
+                expected_suffixes = self._detect_all_suffixes(target_folder, naming_pattern)
+                expected_count = len(expected_suffixes)
+                naming_format = f"自定义匹配规则（使用{expected_count}种不同后缀）"
         else:
             error_msg = f"不支持的后缀类型: {suffix_type}"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
 
-        self.logger.info(f"后缀分隔符: '{suffix_delimiter}'")
-        self.logger.info(f"处理后图片格式: {expected_extension}")
-        self.logger.info(f"原始图片格式: {', '.join(source_extensions)}")
-        self.logger.info("-" * 50)
-
-        # 创建验证器实例并设置回调
-        self.verifier = ImageVerifier(source_folder, target_folder, missing_folder, max_workers)
+        # 创建验证器实例
+        self.verifier = ImageVerifier(
+            source_folder,
+            target_folder,
+            missing_folder,
+            max_workers,
+            is_pure_serial=self.is_pure_serial
+        )
         self.verifier.set_callbacks(
             progress_callback=self._progress_handler,
             log_callback=self._log_handler
         )
 
-        # 扫描原始图片
+        # 扫描原始图片文件
         self.verifier.scan_source_images(source_extensions)
 
-        # 扫描处理后图片
-        try:
-            processed_images = self.verifier.scan_processed_images(naming_pattern)
-        except Exception as e:
-            error_msg = f"扫描处理后图片时发生错误: {str(e)}"
-            self.logger.error(error_msg)
-            processed_images = {}
+        # 添加对 is_pure_serial 情况的 expected_count 补充
+        if self.is_pure_serial:
+            expected_count = len(self.verifier.source_images)
 
-        # 如果未指定期望的后缀（数字或自定义模式），则从处理结果中提取
-        if expected_suffixes is None and processed_images:
+        # 扫描处理后图片文件
+        try:
+            self.verifier.scan_processed_images(naming_pattern)
+        except Exception as e:
+            self.logger.error(f"扫描处理文件时发生错误: {str(e)}")
+
+        # 如果 expected_suffixes 未设置，则从 processed_images 自动生成
+        if expected_suffixes is None:
+            self.logger.warning("未检测到明确的 expected_suffixes，尝试从处理后的图片自动推断...")
             all_suffixes = set()
-            for suffixes in processed_images.values():
+            for suffixes in self.verifier.processed_images.values():
                 all_suffixes.update(suffixes)
             expected_suffixes = sorted(list(all_suffixes))
             expected_count = len(expected_suffixes)
-            self.logger.info(f"从处理结果中提取的后缀列表: {', '.join(expected_suffixes)}")
-            self.logger.info(f"期望的处理版本数量: {expected_count}")
-
-        # 如果是 numeric 模式且未指定 expected_count_per_image，则尝试基于 expected_suffixes 推断
-        if suffix_type == "numeric" and expected_count_per_image is None:
-            if expected_suffixes:
-                self.logger.info("未指定每个基础图片应生成的处理版本数量，尝试从实际处理结果中推断...")
-                expected_count_per_image = expected_count
-                self.logger.info(f"推断得每个基础图片应生成的处理版本数量: {expected_count_per_image}")
-            else:
-                self.logger.warning("无法推断每个基础图片应生成的处理版本数量，未找到任何处理后的图片。")
-                expected_count_per_image = 0
+            self.logger.info(
+                f"自动推断结果：处理文件中包含以下 {len(expected_suffixes)} 个后缀 -> {', '.join(expected_suffixes)}")
 
         # 验证处理完整性
         if verify_completeness:
             if self.is_pure_serial:
-                # 纯序号模式走数量验证分支
-                processed_count = self.verifier.processed_count
-                is_valid = processed_count >= expected_count
-
-                # 记录缺失数量（如果允许部分缺失需调整逻辑）
-                self.verifier.missing_images = list(self.verifier.source_files.keys())[
-                                               :expected_count - processed_count]
-
-                self.logger.info(f"数量验证结果：找到 {processed_count} 个处理文件（需要至少 {expected_count} 个）")
+                # 纯序号模式走数量比对
+                processed_total = sum(
+                    len(s) for s in self.verifier.processed_images.values()) if self.verifier.processed_images else 0
+                self.logger.info(f"数量比对：找到 {processed_total} 个处理图片（预期至少 {expected_count} 个）")
+                if processed_total >= expected_count:
+                    self.logger.success("纯序号模式验证通过！")
+                else:
+                    self.logger.warning("纯序号模式：处理文件数少于原始文件数")
             else:
-                # 原文件名匹配验证逻辑
-                if expected_suffixes is not None:
+                # 验证与 base_name 配套的后缀是否完整
+                if expected_suffixes:
                     self.verifier.verify_completeness(expected_suffixes)
+                else:
+                    self.logger.warning("expected_suffixes 为空，无法进行完整验证")
 
         else:
-            self.logger.info("跳过处理完整性验证.")
+            self.logger.info("跳过处理完整性验证")
 
-        # 打印结果摘要
-        # 传递新增的模式标记参数
+        # 构建 summary 数据并打印
         self.verifier.print_summary(
-            expected_count,
-            naming_format,
+            expected_count=expected_count,
+            naming_format=naming_format or "未知模式",
             is_pure_serial=self.is_pure_serial,
             is_pure_basename=self.is_pure_basename,
             processed_count=len(self.verifier.processed_images) if hasattr(self.verifier, 'processed_images') else 0
         )
 
-        # 计算总耗时
+        # 总耗时
         total_time = time.time() - start_time
         self.logger.info(f"总计耗时: {total_time:.2f}秒")
 
-        # 返回验证结果
-        return {
-            "missing_images": self.verifier.missing_images,
-            "incomplete_images": self.verifier.incomplete_images,
-            "naming_errors": self.verifier.naming_errors if verify_naming else []
-        }
+        # 返回结果
+        return self.verifier.get_summary(expected_count, naming_format)
+
+    def _detect_all_suffixes(self, target_folder: str, naming_pattern: re.Pattern) -> List[str]:
+        """
+        自动检测目标文件夹中所有匹配的 suffix 名称（适用于 custom 模式）
+        """
+        suffixes = set()
+
+        if not os.path.exists(target_folder):
+            self.logger.warning(f"目标文件夹不存在: {target_folder}，跳过后缀检测")
+            return []
+
+        for filename in os.listdir(target_folder):
+            match = naming_pattern.match(filename)
+            if match:
+                suffix = match.groupdict().get("suffix")
+                if suffix is not None:
+                    suffixes.add(suffix)
+
+        return sorted(suffixes)
 
 
 def cli_mode(config_key="numeric_config"):

@@ -13,7 +13,7 @@ from utils.logger import Logger, LogManager
 class ImageVerifier:
     """图片处理验证工具，提供模块化的验证功能，支持多线程处理"""
 
-    def __init__(self, source_folder: str, target_folder: str, missing_folder: str, max_workers: int = None):
+    def __init__(self, source_folder: str, target_folder: str, missing_folder: str, max_workers: int = None, is_pure_serial: bool = False):
         """
         初始化验证工具
 
@@ -30,6 +30,8 @@ class ImageVerifier:
         self.target_folder = target_folder
         self.missing_folder = missing_folder
         self.max_workers = max_workers if max_workers is not None else os.cpu_count()
+        # 新增 is_pure_serial 参数
+        self.is_pure_serial = is_pure_serial
 
         # 回调函数初始化
         self._progress_callback = None
@@ -176,13 +178,21 @@ class ImageVerifier:
         with self._lock:
             if match:
                 group_dict = match.groupdict()
-                if 'base_name' not in group_dict:
+
+                if self.is_pure_serial:
+                    # 自定义纯序号模式：文件名仅为 suffix（无 base_name）
+                    suffix = group_dict.get('suffix', '')
+                    base_name = suffix  # 将 suffix 作为“类 base_name”，用于计数或命名完整性
+                    self.processed_images[base_name].append(suffix)
+                elif 'base_name' in group_dict:
+                    base_name = group_dict['base_name']
+                    suffix = group_dict.get('suffix', '')
+                    self.processed_images[base_name].append(suffix)
+                else:
+                    # 没有 base_name 且非纯序号模式 → 视为命名不规范
                     self.naming_errors.append(filename)
-                    return
-                base_name = group_dict['base_name']
-                suffix = group_dict.get('suffix', '')  # 允许无后缀
-                self.processed_images[base_name].append(suffix)
             else:
+                # 不匹配自定义命名规则 → 为命名错误
                 self.naming_errors.append(filename)
 
             self.processed_files += 1
