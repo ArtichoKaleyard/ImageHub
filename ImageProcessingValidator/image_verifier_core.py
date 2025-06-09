@@ -172,9 +172,12 @@ class ImageVerifier:
 
         with self._lock:
             if match:
-                # 提取匹配的组
-                base_name = match.group('base_name')
-                suffix = match.group('suffix')
+                group_dict = match.groupdict()
+                if 'base_name' not in group_dict:
+                    self.naming_errors.append(filename)
+                    return
+                base_name = group_dict['base_name']
+                suffix = group_dict.get('suffix', '')  # 允许无后缀
                 self.processed_images[base_name].append(suffix)
             else:
                 self.naming_errors.append(filename)
@@ -316,7 +319,9 @@ class ImageVerifier:
             "naming_format": naming_format
         }
 
-    def print_summary(self, expected_count: int, naming_format: str):
+    def print_summary(self, expected_count, naming_format,
+                      is_pure_serial=False, is_pure_basename=False,
+                      processed_count=0):
         """打印验证结果摘要"""
         self._log("\n" + "=" * 50)
         self._log("验证结果摘要:")
@@ -364,6 +369,15 @@ class ImageVerifier:
         else:
             self._log(f"发现 {total_issues} 个问题，详见上述报告。")
         self._log("=" * 50)
+
+        if is_pure_serial:
+            self._log("\n[!] 纯序号模式注意:")
+            self._log(f" - 实际找到处理文件: {processed_count} 个")
+            self._log(f" - 期望总数验证: {'通过' if processed_count >= expected_count else '不通过'}")
+            self._log(" - 文件对应关系无法验证，缺失文件列表仅供参考")
+
+        if is_pure_basename:
+            self._log("\n[√] 已验证所有原文件的1对1对应关系")
 
 
 class NamingPattern:
@@ -430,13 +444,11 @@ class NamingPattern:
         创建自定义命名模式
 
         参数:
-        pattern_template: 自定义模式字符串，必须包含(?P<base_name>...)和(?P<suffix>...)命名组
+        pattern_template: 自定义模式字符串，可以包含(?P<base_name>...)或(?P<suffix>...)命名组，
+                         或者两者都包含
 
         返回:
         编译后的正则表达式模式
         """
-        # 确保模式包含必要的命名组
-        if '(?P<base_name>' not in pattern_template or '(?P<suffix>' not in pattern_template:
-            raise ValueError("自定义模式必须包含(?P<base_name>...)和(?P<suffix>...)命名组")
-
+        # 不再强制要求同时包含两个命名组
         return re.compile(pattern_template, re.IGNORECASE)

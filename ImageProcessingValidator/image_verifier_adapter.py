@@ -181,10 +181,29 @@ class ImageVerifierAdapter:
             self._log_handler(f"后缀类型: 自定义")
             self._log_handler(f"自定义模式: {custom_pattern}")
             naming_pattern = NamingPattern.create_custom_pattern(custom_pattern)
-            naming_format = "自定义命名格式"
-            expected_suffixes = None
-            expected_count = None
 
+            # 新增命名模式类型判断
+            self.is_pure_serial = False
+            self.is_pure_basename = False
+
+            # 解析正则表达式组
+            has_base = '?P<base_name>' in custom_pattern
+            has_suffix = '?P<suffix>' in custom_pattern
+            if not has_base and has_suffix:
+
+                # 纯序号模式 (例如：^\d+\.txt$)
+                self.is_pure_serial = True
+                expected_count = len(self.verifier.source_files)  # 默认期望与原文件数量一致
+                self._log_handler(f"纯序号模式检测：将执行数量验证（预期数量: {expected_count}）")
+                naming_format = f"纯序号格式（无法对应原始文件）"
+                self._log_handler("警告：无法验证文件名对应关系，仅验证处理后的文件总数")
+
+            elif has_base and not has_suffix:
+                # 纯原名模式 (例如：^.+\.txt$)
+                self.is_pure_basename = True
+                expected_suffixes = ['']
+                expected_count = 1
+                naming_format = "原名格式（一对一处理）"
         else:
             raise ValueError(f"不支持的后缀类型: {suffix_type}")
 
@@ -233,22 +252,33 @@ class ImageVerifierAdapter:
 
         # 验证处理完整性
         if verify_completeness:
-            if suffix_type == "numeric" and expected_count_per_image is not None:
-                expected_suffixes = [str(i) for i in range(1, expected_count_per_image + 1)]
-                expected_count = expected_count_per_image
-                self._log_handler(f"使用指定的每个基础图片应生成的处理版本数量: {expected_count_per_image}")
-            elif expected_suffixes:
-                self._log_handler(f"使用推断的 expected_suffixes: {', '.join(expected_suffixes)}")
-            else:
-                self._log_handler("无法验证完整性：既未指定每个基础图片应生成的处理版本数量，也未找到处理后的图片。")
-                expected_suffixes = []
+            if self.is_pure_serial:
+                # 纯序号模式走数量验证分支
+                processed_count = self.verifier.processed_count
+                is_valid = processed_count >= expected_count
 
-            self.verifier.verify_completeness(expected_suffixes)
+                # 记录缺失数量（如果允许部分缺失需调整逻辑）
+                self.verifier.missing_images = list(self.verifier.source_files.keys())[
+                                               :expected_count - processed_count]
+
+                self._log_handler(f"数量验证结果：找到 {processed_count} 个处理文件（需要至少 {expected_count} 个）")
+            else:
+                # 原文件名匹配验证逻辑
+                if expected_suffixes is not None:
+                    self.verifier.verify_completeness(expected_suffixes)
+
         else:
             self._log_handler("\n跳过处理完整性验证.")
 
         # 打印结果摘要
-        self.verifier.print_summary(expected_count, naming_format)
+        # 传递新增的模式标记参数
+        self.verifier.print_summary(
+            expected_count,
+            naming_format,
+            is_pure_serial=self.is_pure_serial,
+            is_pure_basename=self.is_pure_basename,
+            processed_count=len(self.verifier.processed_images) if hasattr(self.verifier, 'processed_images') else 0
+        )
 
         # 计算总耗时
         total_time = time.time() - start_time
