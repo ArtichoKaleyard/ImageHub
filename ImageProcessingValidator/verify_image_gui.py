@@ -18,12 +18,17 @@ from ImageProcessingValidator.image_verifier_adapter import VerifierWorker
 # 导入样式接口
 from style.style_interface import get_style, get_theme, DEFAULT_WINDOW_SIZE
 
+# 导入日志管理器
+from utils.logger import Logger, LogManager
+
 
 class ImageVerifierGUI(QMainWindow):
     """图片验证工具的图形用户界面"""
 
     def __init__(self):
         super().__init__()
+        # 初始化日志记录器
+        self.logger = LogManager.get_logger("IV")
 
         # 设置应用程序
         self.setWindowTitle("图片处理验证工具")
@@ -124,6 +129,9 @@ class ImageVerifierGUI(QMainWindow):
         self.log_output.setReadOnly(True)
         self.log_output.setStyleSheet(get_style('INPUT_STYLE'))
         log_layout.addWidget(self.log_output)
+
+        # 将日志输出区域添加到日志记录器
+        self.logger.set_gui_log_widget(self.log_output)
 
         # 添加到选项卡
         self.tab_widget.addTab(output_tab, "验证输出")
@@ -519,8 +527,13 @@ class ImageVerifierGUI(QMainWindow):
                 if "range_config" in configs:  # 只加载默认配置
                     self._set_config_to_ui(configs["range_config"])
                     self.status_bar.showMessage("配置已加载")
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.status_bar.showMessage("未找到配置文件或格式错误")
+                    self.logger.info("配置文件已加载")
+        except FileNotFoundError:
+            self.status_bar.showMessage("未找到配置文件")
+            self.logger.warning("配置文件未找到")
+        except json.JSONDecodeError:
+            self.status_bar.showMessage("配置文件格式错误")
+            self.logger.error("配置文件格式错误")
 
     def _load_preset(self):
         """加载选定的预设配置"""
@@ -531,10 +544,16 @@ class ImageVerifierGUI(QMainWindow):
                 if preset_key in configs:
                     self._set_config_to_ui(configs[preset_key])
                     self.status_bar.showMessage(f"预设 '{preset_key}' 已加载")
+                    self.logger.info(f"预设 '{preset_key}' 已加载")
                 else:
                     self.status_bar.showMessage(f"预设 '{preset_key}' 不存在")
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.status_bar.showMessage("未找到配置文件或格式错误")
+                    self.logger.warning(f"尝试加载不存在的预设: {preset_key}")
+        except FileNotFoundError:
+            self.status_bar.showMessage("未找到配置文件")
+            self.logger.error("配置文件未找到")
+        except json.JSONDecodeError:
+            self.status_bar.showMessage("配置文件格式错误")
+            self.logger.error("配置文件格式错误")
 
     def _save_preset(self):
         """将当前配置保存为预设"""
@@ -546,8 +565,12 @@ class ImageVerifierGUI(QMainWindow):
             try:
                 with open("./config/IPV_config.json", "r", encoding="utf-8") as f:
                     configs = json.load(f)
-            except (FileNotFoundError, json.JSONDecodeError):
+            except FileNotFoundError:
                 configs = {}
+                self.logger.info("创建新的配置文件")
+            except json.JSONDecodeError:
+                configs = {}
+                self.logger.warning("配置文件格式错误，将创建新文件")
 
             # 更新配置
             configs[preset_key] = config
@@ -557,8 +580,11 @@ class ImageVerifierGUI(QMainWindow):
                 json.dump(configs, f, indent=2, ensure_ascii=False)  # type: ignore
 
             self.status_bar.showMessage(f"配置已保存为预设 '{preset_key}'")
+            self.logger.info(f"配置已保存为预设 '{preset_key}'")
         except Exception as e:
-            self.status_bar.showMessage(f"保存配置失败: {str(e)}")
+            error_msg = f"保存配置失败: {str(e)}"
+            self.status_bar.showMessage(error_msg)
+            self.logger.error(error_msg)
 
     def save_config(self):
         """保存当前配置"""
@@ -566,13 +592,17 @@ class ImageVerifierGUI(QMainWindow):
 
     def start_verification(self):
         """开始验证过程"""
+        self.logger.info("开始验证过程")
+
         # 获取配置
         config = self._get_config_from_ui()
 
         # 验证必要的路径是否存在
         for path_key in ["source_folder", "target_folder", "missing_folder"]:
             if not config[path_key] or not os.path.exists(config[path_key]):
-                QMessageBox.warning(self, "路径错误", f"路径 '{config[path_key]}' 不存在或未设置")
+                error_msg = f"路径 '{config[path_key]}' 不存在或未设置"
+                self.logger.error(error_msg)
+                QMessageBox.warning(self, "路径错误", error_msg)
                 return
 
         # 清空日志和进度条
@@ -584,7 +614,7 @@ class ImageVerifierGUI(QMainWindow):
 
         # 连接信号
         self.verifier_worker.signals.progress_updated.connect(self.update_progress)
-        self.verifier_worker.signals.log_message.connect(self.append_log)
+        self.verifier_worker.signals.log_message.connect(self.logger.info)  # 直接连接到日志记录器
         self.verifier_worker.signals.finished.connect(self.verification_finished)
         self.verifier_worker.signals.error.connect(self.verification_error)
 
@@ -592,6 +622,7 @@ class ImageVerifierGUI(QMainWindow):
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
         self.status_bar.showMessage("验证中...")
+        self.logger.info("验证线程已启动")
 
         # 切换到验证输出选项卡
         self.tab_widget.setCurrentIndex(self.output_tab_index)
@@ -601,9 +632,10 @@ class ImageVerifierGUI(QMainWindow):
 
     def stop_verification(self):
         """停止验证过程"""
+        self.logger.warning("用户请求停止验证")
         if self.verifier_worker:
             self.verifier_worker.stop()
-            self.append_log("正在停止验证，请等待...")
+            self.logger.info("正在停止验证，请等待...")
             self.status_bar.showMessage("正在停止...")
 
     def update_progress(self, current: int, total: int, percent: int):
@@ -612,7 +644,7 @@ class ImageVerifierGUI(QMainWindow):
 
     def append_log(self, message: str):
         """添加日志消息"""
-        self.log_output.append(message)
+        self.logger.info(message)
         # 滚动到底部
         cursor = self.log_output.textCursor()
         cursor.movePosition(cursor.MoveOperation.End)
@@ -628,11 +660,19 @@ class ImageVerifierGUI(QMainWindow):
         # 显示摘要
         total_issues = len(result['missing_images']) + len(result['incomplete_images']) + len(result['naming_errors'])
 
+        self.logger.info(f"验证完成，共发现 {total_issues} 个问题")
+
         if total_issues == 0:
             self.status_bar.showMessage("验证完成: 完美!")
+            self.logger.success("所有图片都已正确处理且命名规范")
             QMessageBox.information(self, "验证完成", "太棒了！所有图片都已正确处理且命名规范。")
         else:
             self.status_bar.showMessage(f"验证完成: 发现 {total_issues} 个问题")
+            self.logger.warning(
+                f"验证发现问题: 完全未处理 {len(result['missing_images'])} 张, "
+                f"处理不完整 {len(result['incomplete_images'])} 张, "
+                f"命名不规范 {len(result['naming_errors'])} 张"
+            )
             QMessageBox.warning(
                 self,
                 "验证完成",
@@ -649,16 +689,27 @@ class ImageVerifierGUI(QMainWindow):
         self.stop_button.setEnabled(False)
         self.status_bar.showMessage("验证出错")
 
-        # 显示错误信息
-        self.append_log(f"错误: {error_message}")
+        # 记录错误信息
+        self.logger.error(f"验证过程中发生错误: {error_message}")
         QMessageBox.critical(self, "验证错误", f"验证过程中发生错误:\n{error_message}")
 
 
 def main():
     app = QApplication(sys.argv)
-    window = ImageVerifierGUI()
-    window.show()
-    sys.exit(app.exec())
+
+    # 获取应用程序日志记录器
+    app_logger = LogManager.get_logger("ImageVerifierApp")
+    app_logger.info("应用程序启动")
+
+    try:
+        window = ImageVerifierGUI()
+        window.show()
+        app_logger.info("主窗口已显示")
+        sys.exit(app.exec())
+    except Exception as e:
+        app_logger.critical(f"应用程序启动失败: {str(e)}")
+        QMessageBox.critical(None, "致命错误", f"应用程序启动失败:\n{str(e)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
