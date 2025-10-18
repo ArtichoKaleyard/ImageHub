@@ -1,6 +1,6 @@
 # <img src="icons/app_icon.png" style="height: 1em; vertical-align: middle;" /> ImageHub - 图像处理工具集
 
-ImageHub是一个基于PyQt6开发的多功能图像处理工具集合，提供了丰富的图像处理和标注功能。该工具集包含五个主要功能模块，每个模块都针对特定的图像处理需求进行了优化设计。
+ImageHub是一个基于PyQt6开发的多功能图像处理工具集合，提供了丰富的图像处理和标注功能。该工具集包含六个主要功能模块，每个模块都针对特定的图像处理需求进行了优化设计。
 
 ## ✨ 功能概览
 
@@ -48,6 +48,27 @@ ImageHub是一个基于PyQt6开发的多功能图像处理工具集合，提供�
 - YOLO格式输出支持
 - 批量处理能力
 - 高度可配置参数
+
+### 6. 🔄 格式转换工具
+- **双向转换支持**：
+  - YOLO → labelme
+  - labelme → YOLO
+- **智能标签管理**：
+  - 自动发现标签
+  - 支持 classes.txt 优先级
+  - 可视化标签映射配置
+- **批量处理能力**：
+  - 多线程并行转换
+  - 实时进度反馈
+  - 详细的转换日志
+- **文件格式支持**：
+  - 矩形（rectangle）标注
+  - 点（point）标注
+  - 自动图像尺寸检测
+- **配置管理**：
+  - 保存/加载配置文件
+  - 导入/导出标签映射
+  - 自定义参数设置
 
 ## ⚙️ 技术特性
 
@@ -117,7 +138,8 @@ python main.py
 - 图片重命名工具：`python AutoRename/auto_rename_gui.py`
 - 图像验证工具：`python ImageProcessingValidator/verify_image_gui.py`
 - 标注加速工具：`python AutoLabeler/auto_labeler_view.py`
-- 差异标注工具：`python DiffLabeler/diff_labeler_view.py`
+- 差分标注工具：`python DiffLabeler/diff_labeler_view.py`
+- 格式转换工具：`python FormatConverter/format_converter_view.py`
 
 ### 图像缩放工具使用
 
@@ -198,6 +220,35 @@ python main.py
 
 <img src="docs/images/差分标注工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
 
+### 格式转换工具使用
+
+#### 基础配置
+1. **目录配置**：
+   - 设置源文件目录（YOLO或labelme标注文件）
+   - 设置图像文件目录（对应的图片文件）
+   - 设置输出目录（转换后的文件）
+2. **转换模式选择**：
+   - YOLO → labelme：将YOLO格式转换为labelme格式
+   - labelme → YOLO：将labelme格式转换为YOLO格式
+3. **YOLO classes.txt配置**（YOLO → labelme模式时）：
+   - 启用"优先使用classes.txt文件"可从指定文件加载标签
+   - 未启用时将自动扫描标注文件发现标签
+
+#### 标签映射配置
+1. 点击"自动发现标签"扫描源文件中的所有标签
+2. 在映射表中配置标签对应关系：
+   - YOLO模式：YOLO类别ID → labelme文本标签
+   - labelme模式：labelme文本标签 → YOLO类别ID
+3. 支持导入/导出映射配置（JSON格式）
+
+#### 执行转换
+1. 完成配置后切换到"执行转换"标签页
+2. 点击"开始转换"启动批量处理
+3. 实时查看转换进度和详细日志
+4. 转换完成后查看成功/失败统计
+
+<img src="docs/images/格式转换工具.png" width="600" style="max-width:100%; height:auto; display:inline-block; margin:10px auto;" />
+
 ## 🏗️ 项目结构
 
 ```
@@ -228,6 +279,12 @@ ImageHub/
 │   ├── diff_labeler_view.py
 │   └── diff_labeler_controller.py
 │
+├── FormatConverter/         # 格式转换模块
+│   ├── format_converter_view.py      # 视图层
+│   ├── format_converter_model.py      # 模型层
+│   ├── format_converter_controller.py # 控制器层
+│   └── __init__.py
+│
 ├── style/                   # 样式资源
 │   ├── style_config.py
 │   ├── style_interface.py
@@ -239,7 +296,8 @@ ImageHub/
 │
 ├── config/                 # 配置文件
 │   ├── DI_config.json
-│   └── IPV_config.json
+│   ├── IPV_config.json
+│   └── FC_config.json
 │
 └── icons/                 # 图标资源
     ├── app_icon.png
@@ -268,6 +326,7 @@ ImageHub/
 - [ ] 批量处理性能优化
 - [ ] 交互体验改进
 - [ ] 跨平台兼容性增强
+- [ ] 支持更多标注格式转换
 
 ## 🙏 致谢
 
