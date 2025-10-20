@@ -38,24 +38,36 @@ class ConversionResult:
 
 class YOLOShape:
     """YOLO格式的形状数据"""
-    def __init__(self, class_id: int, x_center: float, y_center: float,
-                 width: float = None, height: float = None):
+    def __init__(self, class_id: int, x_center: float = None, y_center: float = None,
+                 width: float = None, height: float = None, polygon_points: List[float] = None):
         self.class_id = class_id
         self.x_center = x_center
         self.y_center = y_center
         self.width = width
         self.height = height
+        self.polygon_points = polygon_points  # 多边形归一化坐标点列表 [x1, y1, x2, y2, ...]
 
     @property
     def is_point(self) -> bool:
         """判断是否为点类型"""
-        return self.width is None or self.height is None
+        return self.polygon_points is None and (self.width is None or self.height is None)
+
+    @property
+    def is_polygon(self) -> bool:
+        """判断是否为多边形类型"""
+        return self.polygon_points is not None
 
     def to_yolo_string(self) -> str:
         """转换为YOLO格式字符串"""
-        if self.is_point:
+        if self.is_polygon:
+            # 多边形格式: class_id x1 y1 x2 y2 ... xn yn
+            points_str = ' '.join(f"{coord:.6f}" for coord in self.polygon_points)
+            return f"{self.class_id} {points_str}"
+        elif self.is_point:
+            # 点格式: class_id x y
             return f"{self.class_id} {self.x_center:.6f} {self.y_center:.6f}"
         else:
+            # 矩形格式: class_id x_center y_center width height
             return f"{self.class_id} {self.x_center:.6f} {self.y_center:.6f} {self.width:.6f} {self.height:.6f}"
 
 
@@ -208,8 +220,8 @@ class FormatConverterModel:
         logger.warning(f"未找到对应的图像文件: {base_name}")
         return None
 
-    def load_yolo_annotation(self, yolo_file: str) -> List[YOLOShape]:
-        """加载YOLO格式标注文件"""
+        def load_yolo_annotation(self, yolo_file: str) -> List[YOLOShape]:
+            """加载YOLO格式标注文件"""
         shapes = []
         try:
             with open(yolo_file, 'r', encoding='utf-8') as f:
@@ -225,17 +237,27 @@ class FormatConverterModel:
 
                     try:
                         class_id = int(parts[0])
-                        x_center = float(parts[1])
-                        y_center = float(parts[2])
 
                         if len(parts) == 3:
-                            # 点类型
+                            # 点类型: class_id x y
+                            x_center = float(parts[1])
+                            y_center = float(parts[2])
                             shapes.append(YOLOShape(class_id, x_center, y_center))
+
                         elif len(parts) == 5:
-                            # 矩形类型
+                            # 矩形类型: class_id x_center y_center width height
+                            x_center = float(parts[1])
+                            y_center = float(parts[2])
                             width = float(parts[3])
                             height = float(parts[4])
                             shapes.append(YOLOShape(class_id, x_center, y_center, width, height))
+
+                        elif len(parts) > 5 and (len(parts) - 1) % 2 == 0:
+                            # 多边形类型: class_id x1 y1 x2 y2 ... xn yn
+                            # 点数必须是偶数
+                            polygon_points = [float(parts[i]) for i in range(1, len(parts))]
+                            shapes.append(YOLOShape(class_id, polygon_points=polygon_points))
+
                         else:
                             logger.warning(f"YOLO文件第{line_num}行参数数量错误: {line}")
 
@@ -260,8 +282,8 @@ class FormatConverterModel:
                 points = shape_data['points']
                 shape_type = shape_data.get('shape_type', 'rectangle')
 
-                # 只处理rectangle和point类型
-                if shape_type in ['rectangle', 'point']:
+                # 支持rectangle、point和polygon类型
+                if shape_type in ['rectangle', 'point', 'polygon']:
                     shapes.append(LabelmeShape(label, points, shape_type))
                 else:
                     logger.warning(f"跳过不支持的形状类型: {shape_type}")
@@ -288,12 +310,22 @@ class FormatConverterModel:
                 # 应用标签映射
                 label = label_mapping.get(yolo_shape.class_id, str(yolo_shape.class_id))
 
-                if yolo_shape.is_point:
+                if yolo_shape.is_polygon:
+                    # 多边形类型 - 将归一化坐标转换为像素坐标
+                    points = []
+                    for i in range(0, len(yolo_shape.polygon_points), 2):
+                        x = yolo_shape.polygon_points[i] * img_width
+                        y = yolo_shape.polygon_points[i + 1] * img_height
+                        points.append([x, y])
+                    shape_type = "polygon"
+
+                elif yolo_shape.is_point:
                     # 点类型
                     x = yolo_shape.x_center * img_width
                     y = yolo_shape.y_center * img_height
                     points = [[x, y]]
                     shape_type = "point"
+
                 else:
                     # 矩形类型 - 从中心点和宽高转换为四个角点
                     x_center = yolo_shape.x_center * img_width
@@ -364,7 +396,7 @@ class FormatConverterModel:
                 shape_type = shape_data.get('shape_type', 'rectangle')
 
                 # 跳过不支持的形状类型
-                if shape_type not in ['rectangle', 'point']:
+                if shape_type not in ['rectangle', 'point', 'polygon']:
                     logger.warning(f"跳过不支持的形状类型: {shape_type}")
                     continue
 
@@ -393,6 +425,16 @@ class FormatConverterModel:
                     height = (y_max - y_min) / img_height
 
                     yolo_shapes.append(YOLOShape(class_id, x_center, y_center, width, height))
+
+                elif shape_type == 'polygon':
+                    # 多边形类型 - 将像素坐标转换为归一化坐标
+                    polygon_points = []
+                    for point in points:
+                        x_norm = point[0] / img_width
+                        y_norm = point[1] / img_height
+                        polygon_points.extend([x_norm, y_norm])
+
+                    yolo_shapes.append(YOLOShape(class_id, polygon_points=polygon_points))
 
             # 保存YOLO文件
             os.makedirs(os.path.dirname(output_file), exist_ok=True)
