@@ -105,6 +105,7 @@ class FormatConverterModel:
         self.config_file = "config/FC_config.json"
         self.use_classes_txt = True   # 是否优先使用classes.txt
         self.classes_txt_path = ""    # classes.txt文件路径
+        self.auto_generate_classes = True  # 是否自动生成classes.txt
 
         # 支持的图像格式
         self.image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
@@ -129,7 +130,8 @@ class FormatConverterModel:
                 "conversion_mode": self.conversion_mode,
                 "label_mapping": self.label_mapping,
                 "use_classes_txt": self.use_classes_txt,
-                "classes_txt_path": self.classes_txt_path
+                "classes_txt_path": self.classes_txt_path,
+                "auto_generate_classes": self.auto_generate_classes
             }
 
             with open(config_path, 'w', encoding='utf-8') as f:
@@ -193,6 +195,58 @@ class FormatConverterModel:
         except Exception as e:
             logger.error(f"读取classes.txt失败: {e}")
             return {}
+
+    def generate_classes_txt(self, output_dir: str = None, class_names: List[str] = None) -> bool:
+        """
+        生成classes.txt文件
+
+        Args:
+            output_dir: 输出目录,默认为target_dir
+            class_names: 类别名称列表(按class_id顺序),如果为None则从label_mapping提取
+
+        Returns:
+            bool: 是否成功生成
+        """
+        if output_dir is None:
+            output_dir = self.target_dir
+
+        if class_names is None:
+            # 从label_mapping中提取类别名称
+            if not self.label_mapping:
+                logger.warning("label_mapping为空,无法生成classes.txt")
+                return False
+
+            # label_mapping在labelme_to_yolo模式下的格式: {label_name: class_id}
+            # 需要按class_id排序后提取label_name
+            try:
+                # 按class_id排序
+                sorted_items = sorted(self.label_mapping.items(), key=lambda x: int(x[1]))
+                class_names = [item[0] for item in sorted_items]
+
+                logger.info(f"从label_mapping提取了{len(class_names)}个类别")
+            except (ValueError, TypeError) as e:
+                logger.error(f"label_mapping格式错误,无法生成classes.txt: {e}")
+                return False
+
+        try:
+            # 确保输出目录存在
+            os.makedirs(output_dir, exist_ok=True)
+
+            # 生成classes.txt路径
+            classes_path = os.path.join(output_dir, "classes.txt")
+
+            # 写入文件
+            with open(classes_path, 'w', encoding='utf-8') as f:
+                for class_name in class_names:
+                    f.write(f"{class_name}\n")
+
+            logger.success(f"成功生成classes.txt: {classes_path},共{len(class_names)}个类别")
+            self.classes_txt_path = classes_path
+            return True
+
+        except Exception as e:
+            logger.error(f"生成classes.txt失败: {e}")
+            return False
 
     def get_image_size(self, image_path: str) -> Tuple[int, int]:
         """获取图像尺寸 (width, height)"""
@@ -410,19 +464,26 @@ class FormatConverterModel:
                     yolo_shapes.append(YOLOShape(class_id, x, y))
 
                 elif shape_type == 'rectangle':
-                    # 矩形类型 - 从两个角点转换为中心点和宽高
-                    x1, y1 = points[0]
-                    x2, y2 = points[1]
+                    if len(points) == 2:
+                        # 原始labelme格式
+                        x1, y1 = points[0]
+                        x2, y2 = points[1]
+                    elif len(points) == 4:
+                        # 四角点情况
+                        xs = [p[0] for p in points]
+                        ys = [p[1] for p in points]
+                        x1, x2 = min(xs), max(xs)
+                        y1, y2 = min(ys), max(ys)
+                        logger.warning("检测到rectangle类型使用了四角点，已自动转换为两点表示")
+                    else:
+                        logger.warning(f"rectangle类型的点数异常: {points}")
+                        continue
 
-                    # 确保坐标顺序正确
-                    x_min, x_max = min(x1, x2), max(x1, x2)
-                    y_min, y_max = min(y1, y2), max(y1, y2)
-
-                    # 转换为归一化的中心点坐标和宽高
-                    x_center = (x_min + x_max) / 2 / img_width
-                    y_center = (y_min + y_max) / 2 / img_height
-                    width = (x_max - x_min) / img_width
-                    height = (y_max - y_min) / img_height
+                    # 通用转换
+                    x_center = (x1 + x2) / 2 / img_width
+                    y_center = (y1 + y2) / 2 / img_height
+                    width = (x2 - x1) / img_width
+                    height = (y2 - y1) / img_height
 
                     yolo_shapes.append(YOLOShape(class_id, x_center, y_center, width, height))
 
@@ -464,7 +525,7 @@ class FormatConverterModel:
         """自动发现源目录中的所有标签"""
         labels = {"yolo": [], "labelme": []}
 
-        # 如果是YOLO格式且启用classes.txt优先级，先尝试加载classes.txt
+        # 如果是YOLO格式且启用classes.txt优先级,先尝试加载classes.txt
         if self.conversion_mode == "yolo_to_labelme" and self.use_classes_txt:
             classes_labels = self.load_classes_txt()
             if classes_labels:
@@ -478,7 +539,7 @@ class FormatConverterModel:
             for file_name in os.listdir(self.source_dir):
                 file_path = os.path.join(self.source_dir, file_name)
 
-                if file_name.endswith('.txt'):
+                if file_name.endswith('.txt') and file_name != 'classes.txt':
                     # YOLO格式文件
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
@@ -512,6 +573,15 @@ class FormatConverterModel:
         labels["yolo"] = sorted(labels["yolo"])
         labels["labelme"] = sorted(labels["labelme"])
 
+        # 如果是labelme转YOLO模式,自动建立映射关系
+        if self.conversion_mode == "labelme_to_yolo" and labels["labelme"]:
+            # 检查是否已有映射,如果没有则自动创建
+            if not self.label_mapping:
+                # 按字母顺序为每个标签分配class_id
+                self.label_mapping = {label: idx for idx, label in enumerate(labels["labelme"])}
+                logger.info(f"自动创建label_mapping,共{len(self.label_mapping)}个类别")
+                logger.debug(f"label_mapping: {self.label_mapping}")
+
         return labels
 
     def batch_convert(self, progress_callback=None, max_workers: int = 4) -> Tuple[int, int, List[str], float]:
@@ -529,7 +599,7 @@ class FormatConverterModel:
 
         # 获取源文件列表
         if self.conversion_mode == "yolo_to_labelme":
-            source_files = [f for f in os.listdir(self.source_dir) if f.endswith('.txt')]
+            source_files = [f for f in os.listdir(self.source_dir) if f.endswith('.txt') and f != 'classes.txt']
             target_ext = '.json'
         else:
             source_files = [f for f in os.listdir(self.source_dir) if f.endswith('.json')]
@@ -537,6 +607,13 @@ class FormatConverterModel:
 
         if not source_files:
             return 0, 0, ["源目录中没有找到相应格式的文件"], 0.0
+
+        # **关键修复: 在转换前确保label_mapping已建立**
+        if self.conversion_mode == "labelme_to_yolo" and not self.label_mapping:
+            logger.info("label_mapping为空,开始自动发现标签...")
+            discovered_labels = self.discover_labels()
+            if not self.label_mapping:
+                logger.warning("自动发现标签失败,将使用默认映射")
 
         # 准备转换任务
         tasks = []
@@ -546,9 +623,13 @@ class FormatConverterModel:
             target_path = os.path.join(self.target_dir, base_name + target_ext)
 
             # 查找对应的图像文件
-            image_path = self.find_corresponding_image(source_path)
-            if image_path is None:
-                continue
+            if self.conversion_mode == "yolo_to_labelme":
+                image_path = self.find_corresponding_image(source_path)
+                if image_path is None:
+                    continue
+            else:
+                # labelme转YOLO不需要图像文件(尺寸信息在json中)
+                image_path = None
 
             tasks.append(ConversionTask(
                 source_file=source_path,
@@ -609,6 +690,14 @@ class FormatConverterModel:
                     progress = int(completed / len(tasks) * 100)
                     if not progress_callback(progress):
                         break  # 用户取消
+
+        # 转换完成后,如果是labelme转YOLO模式且启用自动生成classes.txt
+        if self.conversion_mode == "labelme_to_yolo" and self.auto_generate_classes and success_count > 0:
+            logger.info("开始自动生成classes.txt...")
+            if self.generate_classes_txt():
+                logger.success("classes.txt生成成功")
+            else:
+                logger.warning("classes.txt生成失败")
 
         elapsed_time = time.time() - start_time
         logger.info(f"批量转换完成，耗时: {elapsed_time:.2f}秒")
