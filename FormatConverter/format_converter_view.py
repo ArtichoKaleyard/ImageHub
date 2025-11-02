@@ -294,7 +294,7 @@ class LabelMappingPanel(QWidget):
         self.populate_mapping_table()
 
     def populate_mapping_table(self):
-        """填充映射表"""
+        """填充映射表 - 统一使用三列格式"""
         # 根据当前转换模式确定源标签和目标标签
         parent_view = self.parent().parent().parent()  # 获取主视图
         if hasattr(parent_view, 'directory_panel'):
@@ -305,151 +305,280 @@ class LabelMappingPanel(QWidget):
             conversion_mode = "yolo_to_labelme"
             use_classes = True
 
-        if conversion_mode == "yolo_to_labelme":
-            # YOLO转换模式
-            if use_classes and self.classes_labels:
-                # 优先使用classes.txt中的标签
-                source_labels = self.classes_labels.get("yolo", [])
-                original_labels = self.classes_labels.get("labelme", [])
-            else:
-                source_labels = self.current_labels.get("yolo", [])
-                original_labels = [str(label) for label in source_labels]
-        else:
-            # labelme转换模式
-            source_labels = self.current_labels.get("labelme", [])
-            original_labels = source_labels
+        # 统一使用三列格式
+        self.mapping_table.setColumnCount(3)
 
-        # 设置表格列数和行数
-        if conversion_mode == "yolo_to_labelme" and use_classes and self.classes_labels:
-            self.mapping_table.setColumnCount(3)
-            self.mapping_table.setHorizontalHeaderLabels(["YOLO类别ID", "原始标签", "labelme标签"])
-        else:
-            self.mapping_table.setColumnCount(2)
-            if conversion_mode == "yolo_to_labelme":
-                self.mapping_table.setHorizontalHeaderLabels(["YOLO类别ID", "labelme标签"])
+        if conversion_mode == "yolo_to_labelme":
+            # YOLO → labelme 模式
+            if use_classes and self.classes_labels:
+                # 使用classes.txt中的标签
+                source_labels = self.classes_labels.get("yolo", [])  # class_id列表
+                original_labels = self.classes_labels.get("labelme", [])  # 对应的标签名
+                self.mapping_table.setHorizontalHeaderLabels(["YOLO类别ID", "原始标签", "目标标签"])
             else:
-                self.mapping_table.setHorizontalHeaderLabels(["labelme标签", "YOLO类别ID"])
+                # 从YOLO文件中发现的class_id
+                source_labels = self.current_labels.get("yolo", [])
+                original_labels = [f"class_{label}" for label in source_labels]  # 生成默认标签名
+                self.mapping_table.setHorizontalHeaderLabels(["YOLO类别ID", "原始标签", "目标标签"])
+        else:
+            # labelme → YOLO 模式
+            source_labels = self.current_labels.get("labelme", [])  # labelme标签名列表
+            original_labels = source_labels  # 原始标签就是labelme标签
+            self.mapping_table.setHorizontalHeaderLabels(["labelme标签", "YOLO类别ID", "目标标签"])
 
         self.mapping_table.setRowCount(len(source_labels))
 
         # 填充数据
         for i, source_label in enumerate(source_labels):
-            # 源标签（只读）
+            # 第1列：源标签（只读）
             source_item = QTableWidgetItem(str(source_label))
             source_item.setFlags(source_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            source_item.setBackground(Qt.GlobalColor.lightGray)
             self.mapping_table.setItem(i, 0, source_item)
 
-            # 如果有原始标签列（使用classes.txt时）
-            if conversion_mode == "yolo_to_labelme" and use_classes and self.classes_labels:
-                # 原始标签（只读）
-                original_label = original_labels[i] if i < len(original_labels) else ""
+            if conversion_mode == "yolo_to_labelme":
+                # YOLO → labelme 模式
+                # 第2列：原始标签（只读）
+                original_label = original_labels[i] if i < len(original_labels) else f"class_{source_label}"
                 original_item = QTableWidgetItem(original_label)
                 original_item.setFlags(original_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                original_item.setBackground(Qt.GlobalColor.lightGray)
                 self.mapping_table.setItem(i, 1, original_item)
 
-                # 目标标签（可编辑）
-                target_col = 2
-            else:
-                # 目标标签（可编辑）
-                target_col = 1
+                # 第3列：目标标签（可编辑）
+                default_target = original_label  # 默认保持原标签
+                target_item = QTableWidgetItem(default_target)
+                target_item.setToolTip(f"输入目标labelme标签名称\n原标签: {original_label}\nclass_id: {source_label}")
+                self.mapping_table.setItem(i, 2, target_item)
 
-            # 目标标签（可编辑）
-            # 目标标签预填为原始标签
-            if conversion_mode == "yolo_to_labelme" and use_classes and self.classes_labels and i < len(original_labels):
-                default_label = original_labels[i]
             else:
-                default_label = str(source_label)
-            target_item = QTableWidgetItem(default_label)
-            if conversion_mode == "yolo_to_labelme":
-                if use_classes and self.classes_labels and i < len(original_labels):
-                    target_item.setToolTip(original_labels[i])
+                # labelme → YOLO 模式
+                # 第2列：YOLO类别ID（可编辑）
+                default_class_id = str(i)  # 按顺序分配默认class_id
+                class_id_item = QTableWidgetItem(default_class_id)
+                class_id_item.setToolTip(f"输入YOLO类别ID（必须是非负整数）\nlabelme标签: {source_label}")
+                self.mapping_table.setItem(i, 1, class_id_item)
+
+                # 第3列：目标标签（可编辑，将写入classes.txt）
+                default_target = str(source_label)  # 默认保持原标签名
+                target_item = QTableWidgetItem(default_target)
+                target_item.setToolTip(
+                    f"输入目标标签名称（将写入classes.txt）\n原标签: {source_label}\n分配的class_id: {default_class_id}")
+                self.mapping_table.setItem(i, 2, target_item)
+
+        # 连接单元格编辑完成信号
+        try:
+            self.mapping_table.cellChanged.disconnect()  # 先断开之前的连接
+        except TypeError:
+            pass  # 如果没有连接会抛出异常，忽略
+        self.mapping_table.cellChanged.connect(self.validate_and_update_mapping)
+
+    def validate_and_update_mapping(self, row, col):
+        """验证并更新映射"""
+        # 获取转换模式
+        parent_view = self.parent().parent().parent()
+        if hasattr(parent_view, 'directory_panel'):
+            config = parent_view.directory_panel.get_config()
+            conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
+        else:
+            conversion_mode = "yolo_to_labelme"
+
+        item = self.mapping_table.item(row, col)
+        if not item:
+            return
+
+        value = item.text().strip()
+
+        # 验证输入
+        if conversion_mode == "labelme_to_yolo" and col == 1:
+            # labelme → YOLO 模式，验证class_id列（第2列）
+            try:
+                int_value = int(value)
+                if int_value < 0:
+                    raise ValueError("class_id不能为负数")
+                # 更新为标准格式
+                item.setText(str(int_value))
+                # 清除错误标记
+                item.setBackground(Qt.GlobalColor.white)
+                item.setToolTip(f"YOLO类别ID: {int_value}")
+
+                # 检查是否有重复的class_id
+                self.check_duplicate_class_ids(row, int_value)
+
+            except ValueError:
+                logger.warning(f"YOLO类别ID必须是非负整数: {value}")
+                item.setBackground(Qt.GlobalColor.red)
+                item.setToolTip("错误: 必须输入非负整数")
+                return
+
+        elif col == 2:
+            # 目标标签列验证
+            if not value:
+                logger.warning("目标标签不能为空")
+                item.setBackground(Qt.GlobalColor.yellow)
+                item.setToolTip("警告: 目标标签不能为空")
+            else:
+                # 清除错误标记
+                item.setBackground(Qt.GlobalColor.white)
+                if conversion_mode == "yolo_to_labelme":
+                    item.setToolTip(f"目标labelme标签: {value}")
                 else:
-                    target_item.setToolTip(f"标签_{source_label}")
-            else:
-                target_item.setToolTip("0")
-            self.mapping_table.setItem(i, target_col, target_item)
+                    item.setToolTip(f"目标标签（classes.txt）: {value}")
+
+        # 触发映射更新
+        self.on_mapping_changed()
+
+    def check_duplicate_class_ids(self, current_row, class_id):
+        """检查重复的class_id"""
+        for row in range(self.mapping_table.rowCount()):
+            if row != current_row:
+                class_id_item = self.mapping_table.item(row, 1)
+                if class_id_item:
+                    try:
+                        other_id = int(class_id_item.text())
+                        if other_id == class_id:
+                            # 标记重复项
+                            class_id_item.setBackground(Qt.GlobalColor.yellow)
+                            class_id_item.setToolTip(f"警告: class_id {class_id} 重复")
+                            self.mapping_table.item(current_row, 1).setBackground(Qt.GlobalColor.yellow)
+                            logger.warning(f"检测到重复的class_id: {class_id}")
+                            return
+                    except ValueError:
+                        continue
+
+        # 清除重复标记
+        for row in range(self.mapping_table.rowCount()):
+            class_id_item = self.mapping_table.item(row, 1)
+            if class_id_item and class_id_item.background() == Qt.GlobalColor.yellow:
+                try:
+                    check_id = int(class_id_item.text())
+                    # 重新检查是否还有其他重复
+                    duplicates = [r for r in range(self.mapping_table.rowCount())
+                                  if r != row and self.mapping_table.item(r, 1)
+                                  and self.mapping_table.item(r, 1).text().isdigit()
+                                  and int(self.mapping_table.item(r, 1).text()) == check_id]
+                    if not duplicates:
+                        class_id_item.setBackground(Qt.GlobalColor.white)
+                        class_id_item.setToolTip(f"YOLO类别ID: {check_id}")
+                except ValueError:
+                    continue
 
     def get_mapping(self) -> Dict[Union[str, int], Union[str, int]]:
-        """获取当前映射配置"""
+        """获取当前映射配置 - 适配三列格式"""
         mapping = {}
+
+        # 获取转换模式
+        parent_view = self.parent().parent().parent()
+        if hasattr(parent_view, 'directory_panel'):
+            config = parent_view.directory_panel.get_config()
+            conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
+        else:
+            conversion_mode = "yolo_to_labelme"
+
         for i in range(self.mapping_table.rowCount()):
-            source_item = self.mapping_table.item(i, 0)
+            source_item = self.mapping_table.item(i, 0)  # 源标签
 
-            # 确定目标标签的列索引
-            parent_view = self.parent().parent().parent()
-            if hasattr(parent_view, 'directory_panel'):
-                config = parent_view.directory_panel.get_config()
-                conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
-                use_classes = config.get("use_classes_txt", True)
-            else:
-                conversion_mode = "yolo_to_labelme"
-                use_classes = True
-
-            if conversion_mode == "yolo_to_labelme" and use_classes and self.classes_labels:
-                target_col = 2
-            else:
-                target_col = 1
-
-            target_item = self.mapping_table.item(i, target_col)
-
-            if source_item and target_item:
-                source_value = source_item.text()
-                target_value = target_item.text()
-
-                if source_value and target_value:
-                    try:
-                        if conversion_mode == "yolo_to_labelme":
-                            # YOLO ID -> labelme 标签
+            if conversion_mode == "yolo_to_labelme":
+                # YOLO → labelme: class_id -> target_label
+                target_item = self.mapping_table.item(i, 2)  # 目标标签
+                if source_item and target_item:
+                    source_value = source_item.text()
+                    target_value = target_item.text()
+                    if source_value and target_value:
+                        try:
                             mapping[int(source_value)] = target_value
-                        else:
-                            # labelme 标签 -> YOLO ID
-                            mapping[source_value] = int(target_value)
-                    except ValueError:
-                        logger.warning(f"映射值转换错误: {source_value} -> {target_value}")
+                        except ValueError:
+                            logger.warning(f"映射值转换错误: {source_value} -> {target_value}")
+            else:
+                # labelme → YOLO: label_name -> class_id
+                class_id_item = self.mapping_table.item(i, 1)  # class_id
+                if source_item and class_id_item:
+                    source_value = source_item.text()  # labelme标签名
+                    class_id_value = class_id_item.text()  # class_id
+                    if source_value and class_id_value:
+                        try:
+                            mapping[source_value] = int(class_id_value)
+                        except ValueError:
+                            logger.warning(f"映射值转换错误: {source_value} -> {class_id_value}")
 
         return mapping
 
+    def get_target_labels(self) -> List[str]:
+        """获取目标标签列表（用于生成classes.txt）"""
+        target_labels = []
+
+        # 获取转换模式
+        parent_view = self.parent().parent().parent()
+        if hasattr(parent_view, 'directory_panel'):
+            config = parent_view.directory_panel.get_config()
+            conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
+        else:
+            conversion_mode = "yolo_to_labelme"
+
+        if conversion_mode == "labelme_to_yolo":
+            # 收集映射数据：class_id -> target_label
+            class_id_to_label = {}
+
+            for i in range(self.mapping_table.rowCount()):
+                class_id_item = self.mapping_table.item(i, 1)  # class_id
+                target_item = self.mapping_table.item(i, 2)  # 目标标签
+
+                if class_id_item and target_item:
+                    try:
+                        class_id = int(class_id_item.text())
+                        target_label = target_item.text().strip()
+                        if target_label:
+                            class_id_to_label[class_id] = target_label
+                    except ValueError:
+                        continue
+
+            # 按class_id排序生成标签列表
+            if class_id_to_label:
+                max_id = max(class_id_to_label.keys())
+                target_labels = [""] * (max_id + 1)  # 预分配空间
+
+                for class_id, label in class_id_to_label.items():
+                    target_labels[class_id] = label
+
+                # 填充空缺的标签
+                for i in range(len(target_labels)):
+                    if not target_labels[i]:
+                        target_labels[i] = f"class_{i}"
+
+        return target_labels
+
     def update_mapping(self, mapping: Dict[Union[str, int], Union[str, int]]):
-        """更新映射显示"""
+        """更新映射显示 - 适配三列格式"""
+        # 获取转换模式
+        parent_view = self.parent().parent().parent()
+        if hasattr(parent_view, 'directory_panel'):
+            config = parent_view.directory_panel.get_config()
+            conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
+        else:
+            conversion_mode = "yolo_to_labelme"
+
         for i in range(self.mapping_table.rowCount()):
             source_item = self.mapping_table.item(i, 0)
+            if not source_item:
+                continue
 
-            # 确定目标标签的列索引
-            parent_view = self.parent().parent().parent()
-            if hasattr(parent_view, 'directory_panel'):
-                config = parent_view.directory_panel.get_config()
-                conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
-                use_classes = config.get("use_classes_txt", True)
-            else:
-                conversion_mode = "yolo_to_labelme"
-                use_classes = True
+            source_value = source_item.text()
 
-            if conversion_mode == "yolo_to_labelme" and use_classes and self.classes_labels:
-                target_col = 2
-            else:
-                target_col = 1
-
-            target_item = self.mapping_table.item(i, target_col)
-
-            if source_item and target_item:
-                source_value = source_item.text()
-                try:
-                    # 根据类型转换
-                    if source_value.isdigit():
+            if conversion_mode == "yolo_to_labelme":
+                # 更新目标标签列
+                target_item = self.mapping_table.item(i, 2)
+                if target_item:
+                    try:
                         key = int(source_value)
-                    else:
-                        key = source_value
-
-                    if key in mapping:
-                        target_item.setText(str(mapping[key]))
-                except:
-                    pass
-
-    @pyqtSlot()
-    def on_mapping_changed(self):
-        """映射改变时触发"""
-        mapping = self.get_mapping()
-        self.mapping_changed.emit(mapping)
+                        if key in mapping:
+                            target_item.setText(str(mapping[key]))
+                    except ValueError:
+                        pass
+            else:
+                # 更新class_id列
+                class_id_item = self.mapping_table.item(i, 1)
+                if class_id_item and source_value in mapping:
+                    class_id_item.setText(str(mapping[source_value]))
 
     def import_mapping(self):
         """导入映射文件"""
@@ -461,8 +590,58 @@ class LabelMappingPanel(QWidget):
                 import json
                 with open(file_path, 'r', encoding='utf-8') as f:
                     mapping = json.load(f)
+
+                # 验证映射格式
+                if not isinstance(mapping, dict):
+                    logger.error("映射文件格式错误：必须是字典格式")
+                    return
+
+                # 获取当前转换模式来验证映射格式
+                parent_view = self.parent().parent().parent()
+                if hasattr(parent_view, 'directory_panel'):
+                    config = parent_view.directory_panel.get_config()
+                    conversion_mode = config.get("conversion_mode", "yolo_to_labelme")
+                else:
+                    conversion_mode = "yolo_to_labelme"
+
+                # 验证映射格式是否匹配当前模式
+                valid_mapping = True
+                for key, value in mapping.items():
+                    if conversion_mode == "yolo_to_labelme":
+                        # YOLO -> labelme: key应该是数字(class_id), value应该是字符串(标签名)
+                        try:
+                            int(key)  # key必须能转换为整数
+                            if not isinstance(value, str):
+                                valid_mapping = False
+                                break
+                        except (ValueError, TypeError):
+                            valid_mapping = False
+                            break
+                    else:
+                        # labelme -> YOLO: key应该是字符串(标签名), value应该是数字(class_id)
+                        if not isinstance(key, str):
+                            valid_mapping = False
+                            break
+                        try:
+                            int(value)  # value必须能转换为整数
+                        except (ValueError, TypeError):
+                            valid_mapping = False
+                            break
+
+                if not valid_mapping:
+                    logger.error(f"映射文件格式与当前转换模式({conversion_mode})不匹配")
+                    return
+
+                # 应用映射
                 self.update_mapping(mapping)
-                logger.success(f"映射导入成功: {file_path}")
+
+                # 触发映射变更事件
+                self.mapping_changed.emit(mapping)
+
+                logger.success(f"映射导入成功: {file_path}，共导入{len(mapping)}个映射")
+
+            except json.JSONDecodeError as e:
+                logger.error(f"映射文件JSON格式错误: {e}")
             except Exception as e:
                 logger.error(f"导入映射失败: {e}")
 
@@ -484,6 +663,12 @@ class LabelMappingPanel(QWidget):
                 logger.success(f"映射导出成功: {file_path}")
             except Exception as e:
                 logger.error(f"导出映射失败: {e}")
+
+    @pyqtSlot()
+    def on_mapping_changed(self):
+        """映射改变时触发"""
+        mapping = self.get_mapping()
+        self.mapping_changed.emit(mapping)
 
 
 class ProcessPanel(QWidget):

@@ -103,12 +103,25 @@ class FormatConverterController(QObject):
         try:
             # 检查必要配置
             config = self.view.get_current_config()
-            if not all([config.get("source_dir"), config.get("target_dir"), config.get("image_dir")]):
+            if not all([config.get("source_dir"), config.get("target_dir")]):
                 self.status_message.emit("请设置所有必要的目录", True)
+                return
+
+            # 对于YOLO转labelme，需要图像目录
+            if config.get("conversion_mode") == "yolo_to_labelme" and not config.get("image_dir"):
+                self.status_message.emit("YOLO转labelme模式需要设置图像目录", True)
                 return
 
             # 更新模型配置
             self.model.set_config(config)
+
+            # 如果是labelme转YOLO模式，需要先获取目标标签列表
+            if config.get("conversion_mode") == "labelme_to_yolo":
+                target_labels = self.view.mapping_panel.get_target_labels()
+                if target_labels:
+                    # 将目标标签列表传递给模型
+                    self.model.target_class_names = target_labels
+                    logger.info(f"设置目标类别名称: {target_labels}")
 
             # 如果已有工作线程在运行，先停止
             if self.worker and self.worker.isRunning():

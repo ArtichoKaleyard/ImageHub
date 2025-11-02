@@ -219,9 +219,15 @@ class FormatConverterModel:
             # label_mapping在labelme_to_yolo模式下的格式: {label_name: class_id}
             # 需要按class_id排序后提取label_name
             try:
-                # 按class_id排序
-                sorted_items = sorted(self.label_mapping.items(), key=lambda x: int(x[1]))
-                class_names = [item[0] for item in sorted_items]
+                if self.conversion_mode == "labelme_to_yolo":
+                    # 按class_id排序，但使用目标标签名称
+                    # 这里需要从界面获取目标标签列表
+                    logger.info("需要从界面获取目标标签列表来生成classes.txt")
+                    return False
+                else:
+                    # YOLO转labelme模式，直接使用映射值
+                    sorted_items = sorted(self.label_mapping.items(), key=lambda x: int(x[0]))
+                    class_names = [item[1] for item in sorted_items]
 
                 logger.info(f"从label_mapping提取了{len(class_names)}个类别")
             except (ValueError, TypeError) as e:
@@ -246,6 +252,32 @@ class FormatConverterModel:
 
         except Exception as e:
             logger.error(f"生成classes.txt失败: {e}")
+            return False
+
+    def validate_label_mapping(self) -> bool:
+        """验证标签映射的有效性"""
+        if not self.label_mapping:
+            return False
+
+        try:
+            for label, class_id in self.label_mapping.items():
+                if self.conversion_mode == "labelme_to_yolo":
+                    # labelme转YOLO: 标签名 -> class_id
+                    if not isinstance(label, str):
+                        logger.error(f"标签名必须是字符串: {label}")
+                        return False
+                    # 确保class_id是整数
+                    int(class_id)
+                else:
+                    # YOLO转labelme: class_id -> 标签名
+                    if not isinstance(class_id, str):
+                        logger.error(f"目标标签必须是字符串: {class_id}")
+                        return False
+                    # 确保label是整数
+                    int(label)
+            return True
+        except (ValueError, TypeError) as e:
+            logger.error(f"标签映射验证失败: {e}")
             return False
 
     def get_image_size(self, image_path: str) -> Tuple[int, int]:
@@ -274,8 +306,8 @@ class FormatConverterModel:
         logger.warning(f"未找到对应的图像文件: {base_name}")
         return None
 
-        def load_yolo_annotation(self, yolo_file: str) -> List[YOLOShape]:
-            """加载YOLO格式标注文件"""
+    def load_yolo_annotation(self, yolo_file: str) -> List[YOLOShape]:
+        """加载YOLO格式标注文件"""
         shapes = []
         try:
             with open(yolo_file, 'r', encoding='utf-8') as f:
@@ -454,8 +486,22 @@ class FormatConverterModel:
                     logger.warning(f"跳过不支持的形状类型: {shape_type}")
                     continue
 
-                # 应用标签映射
-                class_id = label_mapping.get(label, 0)  # 默认为0
+                # ===== 修复的映射逻辑 =====
+                class_id = 0  # 默认class_id
+
+                if label in label_mapping:
+                    mapped_value = label_mapping[label]
+
+                    # 确保映射值是整数类型的class_id
+                    try:
+                        class_id = int(mapped_value)
+                        logger.debug(f"标签映射: {label} -> {class_id}")
+                    except (ValueError, TypeError):
+                        logger.warning(f"映射值转换错误: {label} -> {mapped_value}，使用默认值0")
+                        class_id = 0
+                else:
+                    logger.warning(f"标签 '{label}' 不在映射表中，使用默认值0")
+                    class_id = 0
 
                 if shape_type == 'point':
                     # 点类型
@@ -578,10 +624,15 @@ class FormatConverterModel:
             # 检查是否已有映射,如果没有则自动创建
             if not self.label_mapping:
                 # 按字母顺序为每个标签分配class_id
-                self.label_mapping = {label: idx for idx, label in enumerate(labels["labelme"])}
+                sorted_labels = sorted(labels["labelme"])
+                self.label_mapping = {label: idx for idx, label in enumerate(sorted_labels)}
                 logger.info(f"自动创建label_mapping,共{len(self.label_mapping)}个类别")
                 logger.debug(f"label_mapping: {self.label_mapping}")
+            else:
+                # 验证现有映射
+                logger.info(f"使用现有label_mapping,共{len(self.label_mapping)}个类别")
 
+        logger.info(f"发现标签: YOLO({len(labels['yolo'])}) + labelme({len(labels['labelme'])})")
         return labels
 
     def batch_convert(self, progress_callback=None, max_workers: int = 4) -> Tuple[int, int, List[str], float]:
@@ -591,7 +642,7 @@ class FormatConverterModel:
         if not os.path.exists(self.source_dir):
             return 0, 0, ["源目录不存在"], 0.0
 
-        if not os.path.exists(self.image_dir):
+        if self.conversion_mode == "yolo_to_labelme" and not os.path.exists(self.image_dir):
             return 0, 0, ["图像目录不存在"], 0.0
 
         # 创建输出目录
@@ -614,6 +665,10 @@ class FormatConverterModel:
             discovered_labels = self.discover_labels()
             if not self.label_mapping:
                 logger.warning("自动发现标签失败,将使用默认映射")
+
+        # 验证映射有效性
+        if not self.validate_label_mapping():
+            logger.warning("标签映射验证失败，可能会影响转换结果")
 
         # 准备转换任务
         tasks = []
@@ -673,7 +728,8 @@ class FormatConverterModel:
                     result = future.result()
                     if result.success:
                         success_count += 1
-                        logger.success(f"转换成功: {os.path.basename(result.source_file)} -> {os.path.basename(result.target_file)}")
+                        logger.success(
+                            f"转换成功: {os.path.basename(result.source_file)} -> {os.path.basename(result.target_file)}")
                     else:
                         failed_count += 1
                         errors.append(result.message)
@@ -694,10 +750,19 @@ class FormatConverterModel:
         # 转换完成后,如果是labelme转YOLO模式且启用自动生成classes.txt
         if self.conversion_mode == "labelme_to_yolo" and self.auto_generate_classes and success_count > 0:
             logger.info("开始自动生成classes.txt...")
-            if self.generate_classes_txt():
-                logger.success("classes.txt生成成功")
+
+            # 使用目标标签列表生成classes.txt
+            if hasattr(self, 'target_class_names') and self.target_class_names:
+                if self.generate_classes_txt(class_names=self.target_class_names):
+                    logger.success("classes.txt生成成功")
+                else:
+                    logger.warning("classes.txt生成失败")
             else:
-                logger.warning("classes.txt生成失败")
+                # 回退到从映射提取
+                if self.generate_classes_txt():
+                    logger.success("classes.txt生成成功")
+                else:
+                    logger.warning("classes.txt生成失败")
 
         elapsed_time = time.time() - start_time
         logger.info(f"批量转换完成，耗时: {elapsed_time:.2f}秒")
