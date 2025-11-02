@@ -213,3 +213,72 @@ class FormatConverterController(QObject):
             error_msg = f"发现标签失败: {e}"
             logger.error(error_msg)
             self.status_message.emit(error_msg, True)
+
+    @pyqtSlot()
+    def start_conversion(self):
+        """开始转换任务"""
+        try:
+            # 检查必要配置
+            config = self.view.get_current_config()
+            if not all([config.get("source_dir"), config.get("target_dir")]):
+                self.status_message.emit("请设置所有必要的目录", True)
+                return
+
+            # 对于YOLO转labelme，需要图像目录
+            if config.get("conversion_mode") == "yolo_to_labelme" and not config.get("image_dir"):
+                self.status_message.emit("YOLO转labelme模式需要设置图像目录", True)
+                return
+
+            # 更新模型配置
+            self.model.set_config(config)
+
+            # 如果是labelme转YOLO模式，需要先获取目标标签列表
+            if config.get("conversion_mode") == "labelme_to_yolo":
+                target_labels = self.view.mapping_panel.get_target_labels()
+                if target_labels:
+                    # 将目标标签列表传递给模型
+                    self.model.target_class_names = target_labels
+                    logger.info(f"设置目标类别名称: {target_labels}")
+
+                    # 同时输出标签合并信息
+                    mapping_panel = self.view.mapping_panel
+                    if hasattr(mapping_panel, 'target_ids') and hasattr(mapping_panel, 'original_labels'):
+                        # 统计标签合并情况
+                        target_id_counts = {}
+                        for i, (orig_label, target_id, target_label) in enumerate(
+                                zip(mapping_panel.original_labels, mapping_panel.target_ids,
+                                    mapping_panel.target_labels)):
+                            if target_id not in target_id_counts:
+                                target_id_counts[target_id] = []
+                            target_id_counts[target_id].append(orig_label)
+
+                        # 输出合并信息
+                        merged_count = sum(1 for count_list in target_id_counts.values() if len(count_list) > 1)
+                        if merged_count > 0:
+                            logger.info(f"检测到 {merged_count} 个目标ID有标签合并：")
+                            for target_id, orig_labels in target_id_counts.items():
+                                if len(orig_labels) > 1:
+                                    logger.info(
+                                        f"  目标ID {target_id}: {', '.join(orig_labels)} -> {target_labels[target_id]}")
+
+            # 如果已有工作线程在运行，先停止
+            if self.worker and self.worker.isRunning():
+                self.worker.cancel()
+                self.worker.wait(1000)
+
+            # 创建并启动工作线程
+            self.worker = ConversionWorker(self.model)
+
+            # 连接工作线程信号
+            self.worker.progress_updated.connect(self.view.set_progress)
+            self.worker.conversion_started.connect(self.view.on_conversion_started)
+            self.worker.conversion_finished.connect(self.view.on_conversion_finished)
+            self.worker.conversion_error.connect(lambda msg: self.status_message.emit(msg, True))
+
+            # 启动工作线程
+            self.worker.start()
+
+        except Exception as e:
+            error_msg = f"启动转换任务失败: {e}"
+            logger.error(error_msg)
+            self.status_message.emit(error_msg, True)
