@@ -87,6 +87,9 @@ class Logger:
         "critical": 50  # 新增critical级别
     }
 
+    # 类级别的控制台锁
+    _console_lock = threading.Lock()
+
     def __init__(self, log_to_console: bool = True, log_to_gui: bool = True, level: str = "info", name: str = None):
         """
         初始化日志记录器
@@ -230,7 +233,9 @@ class Logger:
         # 输出到控制台
         if to_console:
             console_log = format_console_log(timestamp, full_message, level)
-            print(console_log)
+            # 加锁保证多线程下 print 不混行
+            with Logger._console_lock:
+                print(console_log)
 
         # 输出到GUI
         if to_gui:
